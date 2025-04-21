@@ -1,1 +1,1 @@
-# TinyTownsV2
+# COSC335-TicTacToe

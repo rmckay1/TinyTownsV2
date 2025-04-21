@@ -1,0 +1,23 @@
+services:
+  vite:
+    image: node:22
+    container_name: "tictactoe-vite"
+    ports:
+      - "5173:5173"  # Vite dev server default
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    command: sh -c "npm install && npx vite --host"
+    restart: unless-stopped
+
+  backend:
+    image: node:22
+    container_name: "tictactoe-backend"
+    ports:
+      - "3000:3000"
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    command: sh -c "npm install && node server.js"
+    restart: unless-stopped
+

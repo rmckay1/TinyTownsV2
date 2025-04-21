@@ -6,6 +6,7 @@ import {
 
 export const gameStore = create((set, get) => ({
   grid: Array(16).fill(null),
+  startedAt: new Date().toISOString(),
   selectedResource: null,
   selectedTiles: [],
   isPlacingBuilding: false,
@@ -24,7 +25,7 @@ export const gameStore = create((set, get) => ({
       .map(r => ({ val: r, sort: Math.random() }))
       .sort((a, b) => a.sort - b.sort)
       .map(r => r.val);
-
+  
     set({
       grid: Array(16).fill(null),
       selectedResource: null,
@@ -32,9 +33,11 @@ export const gameStore = create((set, get) => ({
       activeRecipe: null,
       isPlacingBuilding: false,
       resourceDeck: shuffled.slice(3),
-      visibleResources: shuffled.slice(0, 3)
+      visibleResources: shuffled.slice(0, 3),
+      startedAt: new Date().toISOString()
     });
   },
+  
 
   setSelectedResource: (index) => {
     const { visibleResources } = get();

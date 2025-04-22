@@ -29,7 +29,7 @@ export async function saveGame(grid, score, startedAt, finishedAt, idToken) {
   const board = serializeBoard(grid);
 
   try {
-    const res = await fetch("http://localhost:5000/save-game", {
+    const res = await fetch("http://localhost:3000/save-game", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

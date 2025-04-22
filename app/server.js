@@ -24,6 +24,7 @@ const db = admin.firestore();
 
 const app = express();
 app.use(cors());
+app.options("*", cors()); // ✅ this line is crucial!
 app.use(express.json());
 
 
@@ -89,7 +90,7 @@ app.post('/unlock-achievement', async (req, res) => {
 
 
 
-const PORT = process.env.VITE_BACKEND_PORT || 5000;
+const PORT = process.env.VITE_BACKEND_PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });

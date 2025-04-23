@@ -64,6 +64,10 @@ export const gameStore = create((set, get) => ({
       visibleResources: newVisible,
       resourceDeck: newDeck.slice(1)
     });
+  // Log the grid after the state has been set
+  setTimeout(() => {
+    console.log(newGrid); // This will be the updated state of the grid
+  }, 0);
   },
 
   toggleTileSelection: (index) => {

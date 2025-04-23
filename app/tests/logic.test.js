@@ -1,4 +1,5 @@
 import { checkWinner, saveGame } from "../src/logic.js";
+// import { unlockAchievement } from "./your-module"; // update with actual path
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -58,3 +59,37 @@ describe('saveGame', () => {
     expect(sentTimestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
   });
 });
+
+// describe("unlockAchievement", () => {
+//   test("sends correct POST request with headers and body", async () => {
+//     const mockAchievementId = "perfect_town";
+//     const mockGameId = "abc123";
+//     const mockToken = "test-id-token";
+
+//     fetch.mockResolvedValueOnce({ ok: true });
+
+//     const before = new Date();
+
+//     await unlockAchievement(mockAchievementId, mockGameId, mockToken);
+
+//     const call = fetch.mock.calls[0];
+//     const body = JSON.parse(call[1].body);
+//     const sentTimestamp = new Date(body.achievedAt);
+
+//     expect(fetch).toHaveBeenCalledTimes(1);
+//     expect(fetch).toHaveBeenCalledWith("http://localhost:3000/unlock-achievement", {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${mockToken}`,
+//       },
+//       body: JSON.stringify({
+//         achievementId: mockAchievementId,
+//         gameId: mockGameId,
+//         achievedAt: body.achievedAt,
+//       }),
+//     });
+
+//     expect(sentTimestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
+//   });
+// });

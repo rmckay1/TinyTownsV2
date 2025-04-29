@@ -24,99 +24,87 @@ export function calculateScore(grid) {
   let score = 0;
   let cottages = 0;
   let farms = 0;
-  let wells = 0;
-  const gridSize = 4; // 4x4 grid (adjust if needed)
+  let chapels = 0;
+  let taverns = 0;
+  let hasCathedral = false;
+  const gridSize = 4; // 4x4 grid
 
-  // First pass: count cottages, farms, wells and score other buildings
+  // loop through every tile once
   for (let i = 0; i < grid.length; i++) {
     const cell = grid[i];
-    if (!cell) continue;
 
     switch (cell) {
-      case "Cottage":
-        cottages += 1;
+      case "C":
+        cottages += 1; // counting how many cottages we have
         break;
 
-      case "Farm":
-        farms += 1;
+      case "A":
+        farms += 1; // counting farms
         break;
 
-      case "Well": {
-        // Check adjacent tiles for Cottages
+      case "P":
+        chapels += 1; // chapels get their bonus later
+        break;
+
+      case "V":
+        taverns += 1; // taverns have a special scoring rule later
+        break;
+
+      case "W": {
+        // wells give points for adjacent cottages
         const adjacentIndexes = [];
         const row = Math.floor(i / gridSize);
         const col = i % gridSize;
 
-        if (row > 0) adjacentIndexes.push(i - gridSize); // up
+        if (row > 0) adjacentIndexes.push(i - gridSize);     // up
         if (row < gridSize - 1) adjacentIndexes.push(i + gridSize); // down
-        if (col > 0) adjacentIndexes.push(i - 1); // left
-        if (col < gridSize - 1) adjacentIndexes.push(i + 1); // right
+        if (col > 0) adjacentIndexes.push(i - 1);             // left
+        if (col < gridSize - 1) adjacentIndexes.push(i + 1);  // right
 
         for (const adj of adjacentIndexes) {
-          if (grid[adj] === "Cottage") {
-            score += 1;
+          if (grid[adj] === "C") {
+            score += 1; // +1 per adjacent cottage
           }
         }
-        wells += 1;
         break;
       }
 
-      case "Theatre": {
-        // We'll find the row and column of this Theatre
+      case "T": {
+        // theatres score based on unique buildings in row and col
         const row = Math.floor(i / gridSize);
         const col = i % gridSize;
-      
-        const uniqueBuildingsInRow = new Set();
-        const uniqueBuildingsInCol = new Set();
-      
-        // Check the entire row
+        const uniqueBuildings = new Set();
+
+        // check all buildings in the same row
         for (let c = 0; c < gridSize; c++) {
-          const buildingInRow = grid[row * gridSize + c];
-          if (buildingInRow && buildingInRow !== "Theatre") {
-            uniqueBuildingsInRow.add(buildingInRow);
-          }
+          const b = grid[row * gridSize + c];
+          if (b && b !== "T") uniqueBuildings.add(b);
         }
-      
-        // Check the entire column
+        // check all buildings in the same column
         for (let r = 0; r < gridSize; r++) {
-          const buildingInCol = grid[r * gridSize + col];
-          if (buildingInCol && buildingInCol !== "Theatre") {
-            uniqueBuildingsInCol.add(buildingInCol);
-          }
+          const b = grid[r * gridSize + col];
+          if (b && b !== "T") uniqueBuildings.add(b);
         }
-      
-        // Combine the unique buildings found in both the row and column
-        const uniqueBuildings = new Set([...uniqueBuildingsInRow, ...uniqueBuildingsInCol]);
-      
-        // Add points for each unique building type
-        score += uniqueBuildings.size;
+
+        score += uniqueBuildings.size; // +1 point per unique building
         break;
       }
-      
 
-      case "Chapel":
-        // Each Chapel is worth 2 points
-        score += 2;
+      case "M":
+        hasCathedral = true; // cathedral changes how empties are scored
+        score += 2; // cathedral itself is worth 2 points
         break;
 
-      case "Tavern":
-        // Add 1 point for each adjacent Tavern
-        // Similar to Theatre, we'll use the adjacency logic
-        break;
-
-      case "Cathedral":
-        // Each Cathedral is worth 5 points
-        score += 5;
-        break;
-
-      case "wood":
-      case "brick":
-      case "wheat":
-      case "glass":
-      case "stone":
+      // ignore factories, resources, empties, all score no points (empties handled at end)
+      case "F":
+      case "b":
+      case "g":
+      case "h":
+      case "s":
+      case "w":
+      case ".":
       case null:
       case undefined:
-        // Ignore resources and empty tiles
         break;
 
       default:
@@ -124,12 +112,32 @@ export function calculateScore(grid) {
     }
   }
 
-  // FINAL step: handle cottage scoring based on available farms
-  const cottagesFed = Math.min(cottages, farms * 4);
-  score += cottagesFed * 3;
+  // after looping, score cottages
+  const cottagesFed = Math.min(cottages, farms * 4); // farms feed 4 cottages each
+  score += cottagesFed * 3; // fed cottages worth 3 pts each
+
+  // chapels score based on how many cottages are fed
+  score += chapels * cottagesFed;
+
+  // score taverns based on how many you have
+  if (taverns === 1) score += 2;
+  else if (taverns === 2) score += 5;
+  else if (taverns === 3) score += 9;
+  else if (taverns === 4) score += 14;
+  else if (taverns >= 5) score += 20;
+
+  // handle penalty for empty/resource tiles, unless you built cathedral
+  if (!hasCathedral) {
+    const emptyTiles = grid.filter(cell =>
+      cell === '.' || cell === 'b' || cell === 'h' || cell === 'g' || cell === 's' || cell === 'w'
+    ).length;
+    score -= emptyTiles; // -1 per empty/resource tile
+  }
 
   return score;
 }
+
+
 
 
 export async function saveGame(grid, score, startedAt, finishedAt, idToken) {

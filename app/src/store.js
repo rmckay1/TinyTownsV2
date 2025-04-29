@@ -20,7 +20,7 @@ export const gameStore = create((set, get) => ({
 
   resetGrid: () => {
     const resources = ['wood', 'brick', 'wheat', 'glass', 'stone'];
-    const fullDeck = resources.flatMap(res => Array(15).fill(res));
+    const fullDeck = resources.flatMap(res => Array(3).fill(res));
     const shuffled = fullDeck
       .map(r => ({ val: r, sort: Math.random() }))
       .sort((a, b) => a.sort - b.sort)
@@ -32,11 +32,12 @@ export const gameStore = create((set, get) => ({
       selectedTiles: [],
       activeRecipe: null,
       isPlacingBuilding: false,
-      resourceDeck: shuffled.slice(3),
-      visibleResources: shuffled.slice(0, 3),
+      resourceDeck: shuffled.slice(3),       // Remaining deck
+      visibleResources: shuffled.slice(0, 3), // First 3 visible
       startedAt: new Date().toISOString()
     });
   },
+  
   
 
   setSelectedResource: (index) => {
@@ -47,27 +48,26 @@ export const gameStore = create((set, get) => ({
   placeResource: (index) => {
     const { grid, selectedResource, visibleResources, resourceDeck } = get();
     if (grid[index] || selectedResource === null) return;
-
+  
     const newGrid = [...grid];
     newGrid[index] = selectedResource;
-
+  
     const usedIndex = visibleResources.findIndex(r => r === selectedResource);
     if (usedIndex === -1) return;
-
+  
     const newVisible = [...visibleResources];
-    const newDeck = [...resourceDeck, selectedResource];
-    newVisible[usedIndex] = resourceDeck[0];
-
+    newVisible[usedIndex] = resourceDeck[0]; // Show next card
+    const newDeck = [...resourceDeck.slice(1), selectedResource]; // Move used card to bottom
+  
     set({
       grid: newGrid,
       selectedResource: null,
       visibleResources: newVisible,
-      resourceDeck: newDeck.slice(1)
+      resourceDeck: newDeck
     });
-  // Log the grid after the state has been set
-  setTimeout(() => {
-    console.log(newGrid); // This will be the updated state of the grid
-  }, 0);
+  
+    // Optional debug log
+    setTimeout(() => console.log(newGrid), 0);
   },
 
   toggleTileSelection: (index) => {

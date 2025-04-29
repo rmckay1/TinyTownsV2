@@ -73,7 +73,7 @@ export const gameStore = create((set, get) => ({
   toggleTileSelection: (index) => {
     const state = get();
     const resource = state.grid[index];
-    if (!resource || state.isPlacingBuilding) return;
+    if (!resource || state.isPlacingBuilding || !['wood', 'brick', 'wheat', 'glass', 'stone'].includes(resource)) return;
 
     const alreadySelected = state.selectedTiles.find(t => t.index === index);
     const newSelected = alreadySelected

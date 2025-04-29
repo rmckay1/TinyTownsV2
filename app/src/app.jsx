@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameStore } from './store';
-import { TownGrid } from './TownGrid';
+import { TownGrid } from './towngrid';
 import { ResourceDeck } from './ResourceDeck';
 import { BuildingCards } from './BuildingCards';
 import { saveGame, calculateScore } from './logic';

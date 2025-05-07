@@ -3,6 +3,7 @@ app/serviceAccountKey.json
 app/firebaseConfig.json
 app/package-lock.json
 app/node_modules/
+TinyTownsV2/.DS_Store
 # Logs
 app/logs
 app/*.log
@@ -13,7 +14,6 @@ app/pnpm-debug.log*
 app/lerna-debug.log*
 
 app/coverage
-
 app/dist
 app/dist-ssr
 app/*.local
@@ -29,4 +29,6 @@ app/*.njsproj
 app/*.sln
 app/*.sw?
 app/firebaseConfig
+.DS_Store
+.DS_Store
 .DS_Store

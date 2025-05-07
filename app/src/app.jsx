@@ -3,7 +3,7 @@ import { useGameStore } from './store';
 import { TownGrid } from './towngrid';
 import { ResourceDeck } from './ResourceDeck';
 import { BuildingCards } from './BuildingCards';
-import { saveGame, calculateScore } from './logic';
+import { saveGame, calculateScore, translateEmojisToSymbols } from './logic';
 
 export function App() {
   const {
@@ -17,20 +17,22 @@ export function App() {
   }));
 
   const handleEndGame = async () => {
-    const auth = window.firebaseAuth; // 👈 using compat version from index.html
+    const auth = window.firebaseAuth;
     const user = auth.currentUser;
-
+  
     if (!user) {
       alert("You must be signed in to save your game.");
       return;
     }
-
+  
     try {
       const idToken = await user.getIdToken();
-      const score = calculateScore(grid);
-      const finishedAt = new Date().toISOString();
-
-      await saveGame(grid, score, startedAt, finishedAt, idToken);
+      const symbolGrid = translateEmojisToSymbols(grid); // array of symbols
+      const serializedBoard = symbolGrid.join('');       // string to save
+      const score = calculateScore(symbolGrid);
+      const finishedAt = new Date().toISOString();       // 💡 move this before saveGame
+  
+      await saveGame(serializedBoard, score, startedAt, finishedAt, idToken);
       alert("Game saved successfully!");
       resetGrid();
     } catch (error) {
@@ -38,6 +40,8 @@ export function App() {
       alert("Failed to save game.");
     }
   };
+  
+  
 
   return (
     <div className="text-center py-6">

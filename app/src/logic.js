@@ -112,11 +112,12 @@ export function calculateScore(grid) {
 // Map emojis (from the UI) back to symbols
 export function translateEmojisToSymbols(grid) {
   const emojiMap = {
-    '🪵': 'w', // wood
-    '🧱': 'b', // brick
-    '🌾': 'h', // wheat
-    '🧊': 'g', // glass
-    '🪨': 's', // stone
+    'wood': 'w', // wood
+    'brick': 'b', // brick
+    'wheat': 'h', // wheat
+    'glass': 'g', // glass
+    'stone': 's', // stone
+    '🕳️': 'W', // Well
     '🏠': 'C', // Cottage
     '🎭': 'T', // Theatre
     '🏭': 'F', // Factory

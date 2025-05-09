@@ -12,10 +12,13 @@ import {
 } from './logic';
 import AchievementBanner from './AchievementBanner';
 import PlayerAchievements from './PlayerAchievements';
+import LeaderboardPanel from './LeaderboardPanel';
 
 export function App() {
   const [unlocked, setUnlocked] = useState([]);
   const [showBanner, setShowBanner] = useState(false);
+  const [leaderboardKey, setLeaderboardKey] = useState(0);
+
   const {
     grid,
     resetGrid,
@@ -26,7 +29,7 @@ export function App() {
     startedAt: state.startedAt
   }));
 
-  // ✅ Initialize game automatically on first load
+  // ✅ Automatically initialize game on mount
   useEffect(() => {
     resetGrid();
   }, []);
@@ -48,7 +51,29 @@ export function App() {
       const finishedAt = new Date().toISOString();
 
       await saveGame(serializedBoard, score, startedAt, finishedAt, idToken);
-      const newAchievements = await checkAndUnlockAchievements(symbolGrid, score, startedAt, finishedAt, idToken);
+      const newAchievements = await checkAndUnlockAchievements(
+        symbolGrid,
+        score,
+        startedAt,
+        finishedAt,
+        idToken
+      );
+
+      const townName = prompt("Name your town to submit it to the leaderboard:")?.trim();
+      if (townName && townName.length > 0) {
+        await fetch("http://localhost:3000/leaderboard", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            townName,
+            score
+          })
+        });
+        setLeaderboardKey(prev => prev + 1); // ✅ refresh leaderboard
+      }
 
       if (newAchievements.length > 0) {
         setUnlocked(newAchievements);
@@ -65,7 +90,7 @@ export function App() {
   };
 
   return (
-    <div className="text-center py-6">
+    <div className="text-center py-6 relative">
       <h1 className="text-3xl font-bold mb-4">Tiny Towns</h1>
       <ResourceDeck />
       <TownGrid />
@@ -86,6 +111,7 @@ export function App() {
           End Game
         </button>
       </div>
+      <LeaderboardPanel refreshTrigger={leaderboardKey} />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import {
 export const gameStore = create((set, get) => ({
   grid: Array(16).fill(null),
   startedAt: new Date().toISOString(),
-  selectedResource: null,
+  selectedResourceIndex: null,
   selectedTiles: [],
   isPlacingBuilding: false,
   activeRecipe: null,
@@ -29,7 +29,7 @@ export const gameStore = create((set, get) => ({
 
     set({
       grid: Array(16).fill(null),
-      selectedResource: null,
+      selectedResourceIndex: null,
       selectedTiles: [],
       activeRecipe: null,
       isPlacingBuilding: false,
@@ -39,28 +39,23 @@ export const gameStore = create((set, get) => ({
     });
   },
 
-  setSelectedResource: (index) => {
-    const { visibleResources } = get();
-    set({ selectedResource: visibleResources[index] });
-  },
+  setSelectedResource: (index) => set({ selectedResourceIndex: index }),
 
   placeResource: (index) => {
-    const { grid, selectedResource, visibleResources, resourceDeck } = get();
-    if (grid[index] || selectedResource === null) return;
+    const { grid, selectedResourceIndex, visibleResources, resourceDeck } = get();
+    if (grid[index] || selectedResourceIndex === null) return;
 
+    const selectedResource = visibleResources[selectedResourceIndex];
     const newGrid = [...grid];
     newGrid[index] = selectedResource;
 
-    const usedIndex = visibleResources.findIndex(r => r === selectedResource);
-    if (usedIndex === -1) return;
-
     const newVisible = [...visibleResources];
-    newVisible[usedIndex] = resourceDeck[0];
+    newVisible[selectedResourceIndex] = resourceDeck[0];
     const newDeck = [...resourceDeck.slice(1), selectedResource];
 
     set({
       grid: newGrid,
-      selectedResource: null,
+      selectedResourceIndex: null,
       visibleResources: newVisible,
       resourceDeck: newDeck
     });

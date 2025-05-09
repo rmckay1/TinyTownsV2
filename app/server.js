@@ -127,6 +127,48 @@ app.get("/player-data", async (req, res) => {
   }
 });
 
+app.post('/leaderboard', async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  const { townName, score } = req.body;
+
+  if (!townName || !score) {
+    return res.status(400).send({ error: "Missing data" });
+  }
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+
+    await db.collection("leaderboard").add({
+      townName,
+      score: parseInt(score),
+      userId: uid,
+      timestamp: new Date().toISOString()
+    });
+
+    return res.status(200).send({ success: true });
+  } catch (err) {
+    console.error("Failed to save leaderboard entry:", err);
+    return res.status(500).send({ error: "Internal error" });
+  }
+});
+
+app.get('/leaderboard', async (req, res) => {
+  try {
+    const snapshot = await db.collection("leaderboard")
+      .orderBy("score", "desc")
+      .limit(10)
+      .get();
+
+    const topTowns = snapshot.docs.map(doc => doc.data());
+    res.status(200).send(topTowns);
+  } catch (err) {
+    console.error("Failed to get leaderboard:", err);
+    res.status(500).send({ error: "Internal error" });
+  }
+});
+
+
 
 
 const PORT = process.env.VITE_BACKEND_PORT || 3000;

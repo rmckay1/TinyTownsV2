@@ -10,23 +10,27 @@ const RESOURCE_COLORS = {
 };
 
 export function ResourceDeck() {
-  const { visibleResources, selectedResource, setSelectedResource } = useGameStore(state => ({
+  const { visibleResources, selectedResourceIndex, setSelectedResource } = useGameStore(state => ({
     visibleResources: state.visibleResources,
-    selectedResource: state.selectedResource,
+    selectedResourceIndex: state.selectedResourceIndex,
     setSelectedResource: state.setSelectedResource
   }));
 
   return (
     <div className="flex justify-center gap-2 mb-4">
-      {visibleResources.map((res, i) => (
-        <button
-          key={i}
-          onClick={() => setSelectedResource(i)}
-          className={`w-12 h-12 border-2 rounded ${
-            RESOURCE_COLORS[res]
-          } ${selectedResource === res ? 'ring-4 ring-black' : ''}`}
-        />
-      ))}
+      {visibleResources.map((res, i) => {
+        const isSelected = selectedResourceIndex === i;
+        return (
+          <button
+            key={i}
+            onClick={() => setSelectedResource(i)}
+            className={`w-14 h-14 border-4 rounded transition-all duration-200
+              ${RESOURCE_COLORS[res]} 
+              ${isSelected ? 'ring-4 ring-black scale-105 shadow-md' : 'opacity-90'}
+            `}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -13,6 +13,7 @@ export const gameStore = create((set, get) => ({
   activeRecipe: null,
   resourceDeck: [],
   visibleResources: [],
+  bannerAchievements: [],
   availableRecipes: [
     wellRec, theatreRec, factoryRec, cottageRec,
     chapelRec, farmRec, tavernRec, cathedralRec
@@ -20,25 +21,23 @@ export const gameStore = create((set, get) => ({
 
   resetGrid: () => {
     const resources = ['wood', 'brick', 'wheat', 'glass', 'stone'];
-    const fullDeck = resources.flatMap(res => Array(3).fill(res));
+    const fullDeck = resources.flatMap(res => Array(15).fill(res));
     const shuffled = fullDeck
       .map(r => ({ val: r, sort: Math.random() }))
       .sort((a, b) => a.sort - b.sort)
       .map(r => r.val);
-  
+
     set({
       grid: Array(16).fill(null),
       selectedResource: null,
       selectedTiles: [],
       activeRecipe: null,
       isPlacingBuilding: false,
-      resourceDeck: shuffled.slice(3),       // Remaining deck
-      visibleResources: shuffled.slice(0, 3), // First 3 visible
+      resourceDeck: shuffled.slice(3),
+      visibleResources: shuffled.slice(0, 3),
       startedAt: new Date().toISOString()
     });
   },
-  
-  
 
   setSelectedResource: (index) => {
     const { visibleResources } = get();
@@ -48,32 +47,29 @@ export const gameStore = create((set, get) => ({
   placeResource: (index) => {
     const { grid, selectedResource, visibleResources, resourceDeck } = get();
     if (grid[index] || selectedResource === null) return;
-  
+
     const newGrid = [...grid];
     newGrid[index] = selectedResource;
-  
+
     const usedIndex = visibleResources.findIndex(r => r === selectedResource);
     if (usedIndex === -1) return;
-  
+
     const newVisible = [...visibleResources];
-    newVisible[usedIndex] = resourceDeck[0]; // Show next card
-    const newDeck = [...resourceDeck.slice(1), selectedResource]; // Move used card to bottom
-  
+    newVisible[usedIndex] = resourceDeck[0];
+    const newDeck = [...resourceDeck.slice(1), selectedResource];
+
     set({
       grid: newGrid,
       selectedResource: null,
       visibleResources: newVisible,
       resourceDeck: newDeck
     });
-  
-    // Optional debug log
-    setTimeout(() => console.log(newGrid), 0);
   },
 
   toggleTileSelection: (index) => {
     const state = get();
     const resource = state.grid[index];
-    if (!resource || state.isPlacingBuilding || !['wood', 'brick', 'wheat', 'glass', 'stone'].includes(resource)) return;
+    if (!resource || state.isPlacingBuilding) return;
 
     const alreadySelected = state.selectedTiles.find(t => t.index === index);
     const newSelected = alreadySelected
@@ -115,6 +111,10 @@ export const gameStore = create((set, get) => ({
       activeRecipe: null,
       isPlacingBuilding: false
     });
+  },
+
+  setBannerAchievements: (achievements) => {
+    set({ bannerAchievements: achievements });
   }
 }));
 

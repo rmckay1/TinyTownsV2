@@ -62,29 +62,68 @@ app.post('/unlock-achievement', async (req, res) => {
     const decoded = await admin.auth().verifyIdToken(token);
     const uid = decoded.uid;
 
-    const userRef = admin.firestore().collection('users').doc(uid);
+    const userRef = admin.firestore().collection('players').doc(uid);
     const userSnap = await userRef.get();
 
     if (!userSnap.exists) {
-      return res.status(404).send("User not found");
+      await userRef.set({ achievements: [achievementId] });
+      return res.status(200).send({ newlyUnlocked: true });
     }
 
     const userData = userSnap.data();
     const existing = userData.achievements || [];
 
     if (existing.includes(achievementId)) {
-      return res.status(200).send("Achievement already unlocked");
+      return res.status(200).send({ newlyUnlocked: false });
     }
 
     await userRef.update({
       achievements: admin.firestore.FieldValue.arrayUnion(achievementId)
     });
 
-    return res.status(200).send("Achievement unlocked");
+    return res.status(200).send({ newlyUnlocked: true });
 
   } catch (err) {
     console.error("Error unlocking achievement:", err);
     return res.status(500).send("Internal error");
+  }
+});
+
+
+app.post("/update-score", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const { score } = req.body;
+
+    const playerRef = db.collection("players").doc(uid);
+    const playerSnap = await playerRef.get();
+
+    const existing = playerSnap.exists ? playerSnap.data().highestScore || "0" : "0";
+
+    if (parseInt(score) > parseInt(existing)) {
+      await playerRef.set({ highestScore: score }, { merge: true });
+    }
+
+    res.status(200).send({ updated: true });
+  } catch (error) {
+    res.status(500).send({ error: "Failed to update score" });
+  }
+});
+
+app.get("/player-data", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+
+    const doc = await db.collection("players").doc(uid).get();
+    if (!doc.exists) return res.status(200).send({ achievements: [], highestScore: "0" });
+
+    res.status(200).send(doc.data());
+  } catch (err) {
+    res.status(500).send({ error: "Failed to fetch player data" });
   }
 });
 

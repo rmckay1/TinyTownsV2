@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from './store';
-import { TownGrid } from './towngrid';
+import { TownGrid } from './TownGrid';
 import { ResourceDeck } from './ResourceDeck';
 import { BuildingCards } from './BuildingCards';
-import { saveGame, calculateScore, translateEmojisToSymbols } from './logic';
+import {
+  saveGame,
+  calculateScore,
+  serializeBoard,
+  translateEmojisToSymbols,
+  checkAndUnlockAchievements
+} from './logic';
+import AchievementBanner from './AchievementBanner';
+import PlayerAchievements from './PlayerAchievements';
 
 export function App() {
+  const [unlocked, setUnlocked] = useState([]);
+  const [showBanner, setShowBanner] = useState(false);
   const {
     grid,
     resetGrid,
@@ -19,20 +29,28 @@ export function App() {
   const handleEndGame = async () => {
     const auth = window.firebaseAuth;
     const user = auth.currentUser;
-  
+
     if (!user) {
       alert("You must be signed in to save your game.");
       return;
     }
-  
+
     try {
       const idToken = await user.getIdToken();
-      const symbolGrid = translateEmojisToSymbols(grid); // array of symbols
-      const serializedBoard = symbolGrid.join('');       // string to save
+      const symbolGrid = translateEmojisToSymbols(grid);
+      const serializedBoard = serializeBoard(symbolGrid);
       const score = calculateScore(symbolGrid);
-      const finishedAt = new Date().toISOString();       // 💡 move this before saveGame
-  
+      const finishedAt = new Date().toISOString();
+
       await saveGame(serializedBoard, score, startedAt, finishedAt, idToken);
+      const newAchievements = await checkAndUnlockAchievements(symbolGrid, score, startedAt, finishedAt, idToken);
+
+      if (newAchievements.length > 0) {
+        setUnlocked(newAchievements);
+        setShowBanner(true);
+        setTimeout(() => setShowBanner(false), 5000);
+      }
+
       alert("Game saved successfully!");
       resetGrid();
     } catch (error) {
@@ -40,8 +58,6 @@ export function App() {
       alert("Failed to save game.");
     }
   };
-  
-  
 
   return (
     <div className="text-center py-6">
@@ -49,6 +65,8 @@ export function App() {
       <ResourceDeck />
       <TownGrid />
       <BuildingCards />
+      <PlayerAchievements />
+      {showBanner && <AchievementBanner unlocked={unlocked} />}
       <div className="flex justify-center gap-4 mt-6">
         <button
           onClick={resetGrid}

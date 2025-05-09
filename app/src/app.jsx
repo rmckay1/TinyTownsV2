@@ -26,6 +26,11 @@ export function App() {
     startedAt: state.startedAt
   }));
 
+  // ✅ Initialize game automatically on first load
+  useEffect(() => {
+    resetGrid();
+  }, []);
+
   const handleEndGame = async () => {
     const auth = window.firebaseAuth;
     const user = auth.currentUser;

@@ -1,95 +1,157 @@
-import { checkWinner, saveGame } from "../src/logic.js";
-// import { unlockAchievement } from "./your-module"; // update with actual path
+// tests/logic.test.js
+import * as logic from '../src/logic.js';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 
-// Mock fetch globally
-global.fetch = vi.fn();
+const {
+  calculateScore,
+  serializeBoard,
+  translateEmojisToSymbols,
+  checkAndUnlockAchievements
+} = logic;
+
+const DUMMY = 'fake-token';
+const NOW = new Date().toISOString();
 
 beforeEach(() => {
-  fetch.mockClear();
+  // restore any previous mocks/spies
+  vi.restoreAllMocks();
+
+  // spy on unlockAchievement & updateHighestScore so we can verify calls
+  vi.spyOn(logic, 'unlockAchievement').mockResolvedValue(true);
+  vi.spyOn(logic, 'updateHighestScore').mockResolvedValue(undefined);
 });
 
-describe('checkWinner', () => {
-  test('detects a horizontal win for X', () => {
-    expect(checkWinner(["X", "X", "X", "", "", "", "", "", ""])).toBe("X");
+describe('calculateScore', () => {
+  test('returns -16 for an empty board', () => {
+    const grid = Array(16).fill(null);
+    expect(calculateScore(grid)).toBe(-16);
   });
 
-  test('detects a vertical win for O', () => {
-    expect(checkWinner(["O", "", "", "O", "", "", "O", "", ""])).toBe("O");
+  test('scores well next to cottages', () => {
+    // 3 non‐empty slots (C, W, C) + 13 nulls = 16 total
+    const grid = ['C', 'W', 'C', ...Array(13).fill(null)];
+    // well gives 2 points, no farms → 0 cottage feeding,
+    // then 13 empty penalties: 2 - 13 = -11
+    expect(calculateScore(grid)).toBe(2 - 13);
   });
 
-  test('detects a diagonal win for X', () => {
-    expect(checkWinner(["X", "", "", "", "X", "", "", "", "X"])).toBe("X");
+  test('scores cottage + farm correctly', () => {
+    const grid = ['C', 'A', ...Array(14).fill(null)];
+    // 1 cottage fed by 1 farm: 3 pts, 14 empties: 3 - 14 = -11
+    expect(calculateScore(grid)).toBe(3 - 14);
   });
 
-  test('returns null for a draw', () => {
-    expect(checkWinner(["X", "O", "X", "X", "O", "O", "O", "X", "X"])).toBe(null);
-  });
-});
-
-describe('saveGame', () => {
-  test('sends correct POST request with headers and body', async () => {
-    const mockBoard = ["X", "O", "X", null, null, null, "O", null, "X"];
-    const mockWinner = "X";
-    const mockToken = "test-id-token";
-
-    fetch.mockResolvedValueOnce({ ok: true });
-
-    const before = new Date();
-
-    await saveGame(mockBoard, mockWinner, mockToken);
-
-    const call = fetch.mock.calls[0];
-    const body = JSON.parse(call[1].body);
-    const sentTimestamp = new Date(body.timestamp);
-
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(fetch).toHaveBeenCalledWith("http://localhost:3000/save-game", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${mockToken}`,
-      },
-      body: JSON.stringify({
-        board: mockBoard,
-        winner: mockWinner,
-        timestamp: body.timestamp,
-      }),
-    });
-
-    expect(sentTimestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
+  test('cathedral removes empty penalty', () => {
+    const grid = Array(16).fill(null);
+    grid[0] = 'M';
+    // cathedral itself is 2 pts, and no empty penalty
+    expect(calculateScore(grid)).toBe(2);
   });
 });
 
-// describe("unlockAchievement", () => {
-//   test("sends correct POST request with headers and body", async () => {
-//     const mockAchievementId = "perfect_town";
-//     const mockGameId = "abc123";
-//     const mockToken = "test-id-token";
+describe('serializeBoard', () => {
+  test('serializes full board properly', () => {
+    const grid = [
+      'wood',   // w
+      'brick',  // b
+      'wheat',  // h
+      'glass',  // g
+      'stone',  // s
+      'wood',   // w
+      'Cottage',// C
+      'wood',   // w
+      'Factory' // F
+    ];
+    expect(serializeBoard(grid)).toBe('wbhgswCwF');
+  });
+});
 
-//     fetch.mockResolvedValueOnce({ ok: true });
+describe('translateEmojisToSymbols', () => {
+  test('emoji to code mapping', () => {
+    const input = ['🪵','🧱','🌾','🧊','🪨','🏠'];
+    expect(translateEmojisToSymbols(input)).toEqual(
+      ['w','b','h','g','s','C']
+    );
+  });
+});
 
-//     const before = new Date();
+describe('checkAndUnlockAchievements', () => {
+  test('unlocks perfectTown when board is full', async () => {
+    const fullGrid = Array(16).fill('C');
+    const unlocked = await checkAndUnlockAchievements(fullGrid, 60, NOW, NOW, DUMMY);
+    expect(logic.unlockAchievement).toHaveBeenCalledWith('perfectTown', DUMMY);
+    expect(unlocked).toContain('perfectTown');
+  });
 
-//     await unlockAchievement(mockAchievementId, mockGameId, mockToken);
+  test('unlocks masterBuilder when score is high', async () => {
+    const anyGrid = Array(16).fill('C');
+    const unlocked = await checkAndUnlockAchievements(anyGrid, 55, NOW, NOW, DUMMY);
+    expect(logic.unlockAchievement).toHaveBeenCalledWith('masterBuilder', DUMMY);
+    expect(unlocked).toContain('masterBuilder');
+  });
 
-//     const call = fetch.mock.calls[0];
-//     const body = JSON.parse(call[1].body);
-//     const sentTimestamp = new Date(body.achievedAt);
+  test('unlocks varietyPack for 3 building types', async () => {
+    const grid = ['C','A','P', ...Array(13).fill(null)];
+    const unlocked = await checkAndUnlockAchievements(grid, 0, NOW, NOW, DUMMY);
+    expect(logic.unlockAchievement).toHaveBeenCalledWith('varietyPack', DUMMY);
+    expect(unlocked).toContain('varietyPack');
+  });
 
-//     expect(fetch).toHaveBeenCalledTimes(1);
-//     expect(fetch).toHaveBeenCalledWith("http://localhost:3000/unlock-achievement", {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//         Authorization: `Bearer ${mockToken}`,
-//       },
-//       body: JSON.stringify({
-//         achievementId: mockAchievementId,
-//         gameId: mockGameId,
-//         achievedAt: body.achievedAt,
-//       }),
-//     });
+  test('unlocks speedy when game finishes under 3 mins', async () => {
+    const start = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const end   = new Date().toISOString();
+    const unlocked = await checkAndUnlockAchievements(
+      Array(16).fill('C'),
+      30,
+      start,
+      end,
+      DUMMY
+    );
+    expect(logic.unlockAchievement).toHaveBeenCalledWith('speedy', DUMMY);
+    expect(unlocked).toContain('speedy');
+  });
 
-//     expect(sentTimestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
-//   });
-// });
+  test('unlocks farmLife for 3+ farms', async () => {
+    const grid = ['A','A','A', ...Array(13).fill(null)];
+    const unlocked = await checkAndUnlockAchievements(grid, 0, NOW, NOW, DUMMY);
+    expect(logic.unlockAchievement).toHaveBeenCalledWith('farmLife', DUMMY);
+    expect(unlocked).toContain('farmLife');
+  });
+
+  test('does nothing if conditions aren’t met', async () => {
+    const empty = Array(16).fill(null);
+    const unlocked = await checkAndUnlockAchievements(empty, 0, NOW, NOW, DUMMY);
+    expect(unlocked).toEqual([]);
+    expect(logic.unlockAchievement).not.toHaveBeenCalled();
+  });
+});
+
+// tests/logic.edgecases.test.js
+import {
+  calculateScore,
+  serializeBoard,
+  translateEmojisToSymbols,
+} from '../src/logic.js';
+import { describe, test, expect } from 'vitest';
+
+describe('calculateScore (edge cases)', () => {
+  test('tavern scoring: 1 tavern', () => {
+    // one Tavern (V) + 15 empties → tavern=1 gives +2 pts, minus 15 empties
+    const grid = ['V', ...Array(15).fill(null)];
+    expect(calculateScore(grid)).toBe(2 - 15);
+  });
+
+  test('tavern scoring: 3 taverns', () => {
+    // three V’s + 13 empties → taverns=3 gives +9 pts, minus 13 empties
+    const grid = ['V','V','V', ...Array(13).fill(null)];
+    expect(calculateScore(grid)).toBe(9 - 13);
+  });
+});
+
+describe('serializeBoard (unexpected values)', () => {
+  test('unknown resource falls back to "."', () => {
+    expect(serializeBoard(['foo','bar',null])).toBe('...'); 
+  });
+});
+
+

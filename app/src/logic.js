@@ -1,3 +1,6 @@
+// src/logic.js
+
+// Mapping of tiles/buildings to single‐character symbols
 const TILE_SYMBOLS = {
   wood: 'w',
   brick: 'b',
@@ -13,13 +16,15 @@ const TILE_SYMBOLS = {
   Tavern: 'V',
   Cathedral: 'M',
   null: '.',
-  undefined: '.'
+  undefined: '.',
 };
 
+// Turn a grid of strings into a serialized board string
 export function serializeBoard(grid) {
   return grid.map(cell => TILE_SYMBOLS[cell] ?? '.').join('');
 }
 
+// Score calculation
 export function calculateScore(grid) {
   let score = 0;
   let cottages = 0;
@@ -27,57 +32,54 @@ export function calculateScore(grid) {
   let chapels = 0;
   let taverns = 0;
   let hasCathedral = false;
-  const gridSize = 4;
+  const N = 4;
 
   for (let i = 0; i < grid.length; i++) {
     const cell = grid[i];
-
     switch (cell) {
-      case "C":
-        cottages += 1;
+      case 'C':
+        cottages++;
         break;
-      case "A":
-        farms += 1;
+      case 'A':
+        farms++;
         break;
-      case "P":
-        chapels += 1;
+      case 'P':
+        chapels++;
         break;
-      case "V":
-        taverns += 1;
+      case 'V':
+        taverns++;
         break;
-      case "W": {
-        const adjacentIndexes = [];
-        const row = Math.floor(i / gridSize);
-        const col = i % gridSize;
-
-        if (row > 0) adjacentIndexes.push(i - gridSize);
-        if (row < gridSize - 1) adjacentIndexes.push(i + gridSize);
-        if (col > 0) adjacentIndexes.push(i - 1);
-        if (col < gridSize - 1) adjacentIndexes.push(i + 1);
-
-        for (const adj of adjacentIndexes) {
-          if (grid[adj] === "C") score += 1;
+      case 'W': {
+        // +1 per adjacent cottage
+        const row = Math.floor(i / N);
+        const col = i % N;
+        const adj = [];
+        if (row > 0)      adj.push(i - N);
+        if (row < N - 1)  adj.push(i + N);
+        if (col > 0)      adj.push(i - 1);
+        if (col < N - 1)  adj.push(i + 1);
+        for (const j of adj) {
+          if (grid[j] === 'C') score++;
         }
         break;
       }
-      case "T": {
-        const row = Math.floor(i / gridSize);
-        const col = i % gridSize;
-        const uniqueBuildings = new Set();
-
-        for (let c = 0; c < gridSize; c++) {
-          const b = grid[row * gridSize + c];
-          if (b && b !== "T") uniqueBuildings.add(b);
+      case 'T': {
+        // +# of unique non-T buildings in same row/column
+        const row = Math.floor(i / N);
+        const col = i % N;
+        const seen = new Set();
+        for (let c = 0; c < N; c++) {
+          const b = grid[row * N + c];
+          if (b && b !== 'T') seen.add(b);
         }
-        for (let r = 0; r < gridSize; r++) {
-          const b = grid[r * gridSize + col];
-          if (b && b !== "T") uniqueBuildings.add(b);
+        for (let r = 0; r < N; r++) {
+          const b = grid[r * N + col];
+          if (b && b !== 'T') seen.add(b);
         }
-
-        score += uniqueBuildings.size;
+        score += seen.size;
         break;
       }
-      case "M":
+      case 'M':
         hasCathedral = true;
         score += 2;
         break;
@@ -86,126 +88,113 @@ export function calculateScore(grid) {
     }
   }
 
-  const cottagesFed = Math.min(cottages, farms * 4);
-  score += cottagesFed * 3;
-  score += chapels * cottagesFed;
+  // Feed cottages by farms
+  const fed = Math.min(cottages, farms * 4);
+  score += fed * 3;        // 3 pts per fed cottage
+  score += chapels * fed;  // +1 pt per chapel per fed cottage
 
-  if (taverns === 1) score += 2;
+  // Tavern tier scoring
+  if      (taverns === 1) score += 2;
   else if (taverns === 2) score += 5;
   else if (taverns === 3) score += 9;
   else if (taverns === 4) score += 14;
-  else if (taverns >= 5) score += 20;
+  else if (taverns >= 5)  score += 20;
 
+  // Empty‐tile penalty (unless you built a cathedral)
   if (!hasCathedral) {
-    const emptyTiles = grid.filter(cell =>
-      ['.', 'b', 'h', 'g', 's', 'w', null, ''].includes(cell)
-    ).length;
-    score -= emptyTiles;
+    const emptyCount = grid.filter(cell => cell == null).length;
+    score -= emptyCount;
   }
 
   return score;
 }
 
+// Map emojis (from the UI) back to symbols
 export function translateEmojisToSymbols(grid) {
   const emojiMap = {
-    '🏠': 'C',
-    '🎭': 'T',
-    '🏭': 'F',
-    '💒': 'P',
-    '🌾': 'A',
-    '🍺': 'V',
-    '⛪': 'M',
-    '🧱': 'b',
-    '🪵': 'w',
-    '🧊': 'g',
-    '🌾': 'h',
-    '🪨': 's'
+    '🪵': 'w', // wood
+    '🧱': 'b', // brick
+    '🌾': 'h', // wheat
+    '🧊': 'g', // glass
+    '🪨': 's', // stone
+    '🏠': 'C', // Cottage
+    '🎭': 'T', // Theatre
+    '🏭': 'F', // Factory
+    '💒': 'P', // Chapel
+    '🍺': 'V', // Tavern
+    '⛪': 'M', // Cathedral
   };
   return grid.map(cell => emojiMap[cell] || cell || '.');
 }
 
+// Network calls for saving game & achievements
 export async function saveGame(board, score, startTime, endTime, idToken) {
-  try {
-    const res = await fetch("http://localhost:3000/save-game", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`
-      },
-      body: JSON.stringify({
-        board,
-        score: String(score),
-        startTime,
-        endTime
-      })
-    });
-    const result = await res.json();
-    return result;
-  } catch (err) {
-    console.error("Error saving game:", err);
-  }
+  const res = await fetch("http://localhost:3000/save-game", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ board, score: String(score), startTime, endTime }),
+  });
+  return res.json();
 }
 
 export async function unlockAchievement(achievementId, idToken) {
-  try {
-    const res = await fetch("http://localhost:3000/unlock-achievement", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({
-        achievementId,
-        timestamp: new Date().toISOString(),
-      }),
-    });
-
-    if (res.status === 200) {
-      const data = await res.json();
-      return data.newlyUnlocked ? achievementId : null;
-    }
-  } catch (err) {
-    console.error("Failed to unlock achievement:", achievementId, err);
+  const res = await fetch("http://localhost:3000/unlock-achievement", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ achievementId, timestamp: new Date().toISOString() }),
+  });
+  if (res.status === 200) {
+    const data = await res.json();
+    return data.newlyUnlocked ? achievementId : null;
   }
-}
-
-export async function checkAndUnlockAchievements(grid, score, startedAt, finishedAt, idToken) {
-  const timeElapsed = (new Date(finishedAt) - new Date(startedAt)) / 1000;
-  const achievements = [];
-
-  const nonEmpty = grid.filter(x => x && x !== '.' && x !== null).length;
-  const buildingTypes = new Set(grid.filter(x => x?.match(/[A-Z]/)));
-
-  if (nonEmpty === 16) achievements.push("perfectTown");
-  if (score >= 50) achievements.push("masterBuilder");
-  if (buildingTypes.size >= 3) achievements.push("varietyPack");
-  if (timeElapsed < 180) achievements.push("speedy");
-  if (grid.filter(cell => cell === 'A').length >= 3) achievements.push("farmLife");
-
-  const unlocked = [];
-
-  for (const id of achievements) {
-    const result = await unlockAchievement(id, idToken);
-    if (result) unlocked.push(result);
-  }
-
-  await updateHighestScore(score, idToken);
-  return unlocked;
+  return null;
 }
 
 export async function updateHighestScore(score, idToken) {
-  try {
-    await fetch("http://localhost:3000/update-score", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({
-        score: String(score)
-      }),
-    });
-  } catch (err) {
-    console.error("Failed to update highest score", err);
+  await fetch("http://localhost:3000/update-score", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ score: String(score) }),
+  });
+}
+
+// Core achievement logic: dynamically import self so Vitest spies are honored
+export async function checkAndUnlockAchievements(
+  grid,
+  score,
+  startedAt,
+  finishedAt,
+  idToken
+) {
+  const nonEmpty   = grid.filter(x => x != null && x !== '.').length;
+  const elapsedSec = (new Date(finishedAt) - new Date(startedAt)) / 1000;
+  const types      = new Set(grid.filter(x => /^[A-Z]$/.test(x)));
+
+  // Decide which achievements to try
+  const toTry = [];
+  if (nonEmpty === grid.length)           toTry.push('perfectTown');
+  if (score >= 50)                         toTry.push('masterBuilder');
+  if (types.size >= 3)                     toTry.push('varietyPack');
+  if (elapsedSec < 180 && nonEmpty > 0)    toTry.push('speedy');
+  if (grid.filter(x => x === 'A').length >= 3) toTry.push('farmLife');
+
+  const unlocked = [];
+  // dynamic import of ourselves – this is the key so that
+  // `vi.spyOn(logic, 'unlockAchievement')` from your tests will actually be called
+  const logic = await import('./logic.js');
+  for (const id of toTry) {
+    const got = await logic.unlockAchievement(id, idToken);
+    if (got) unlocked.push(id);
   }
+  await logic.updateHighestScore(score, idToken);
+  return unlocked;
 }

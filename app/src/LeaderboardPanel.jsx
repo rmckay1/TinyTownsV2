@@ -1,3 +1,4 @@
+// src/LeaderboardPanel.jsx
 import React, { useEffect, useState } from 'react';
 
 export default function LeaderboardPanel({ refreshTrigger }) {
@@ -15,16 +16,16 @@ export default function LeaderboardPanel({ refreshTrigger }) {
     };
 
     fetchLeaders();
-  }, [refreshTrigger]); // ✅ refetch whenever the trigger changes
+  }, [refreshTrigger]);
 
   return (
-    <div className="absolute top-6 right-6 bg-white text-gray-800 rounded-lg shadow-lg p-4 w-64">
+    <div className="bg-white text-gray-800 rounded-lg shadow-lg p-4 w-full max-w-xs mx-auto">
       <h2 className="text-xl font-bold mb-2 text-center">🏆 Leaderboard</h2>
       <ol className="list-decimal pl-5 text-sm">
         {leaders.map((entry, i) => (
-          <li key={i} className="mb-1">
+          <li key={i} className="mb-1 flex justify-between">
             <span className="font-semibold">{entry.townName}</span>
-            <span className="float-right">{entry.score}</span>
+            <span>{entry.score}</span>
           </li>
         ))}
       </ol>

@@ -24,9 +24,10 @@ export function ResourceDeck() {
           <button
             key={i}
             onClick={() => setSelectedResource(i)}
-            className={`w-14 h-14 border-4 rounded transition-all duration-200
-              ${RESOURCE_COLORS[res]} 
-              ${isSelected ? 'ring-4 ring-black scale-105 shadow-md' : 'opacity-90'}
+            className={`
+              w-12 h-12 border-2 rounded transition-all duration-200
+              ${RESOURCE_COLORS[res]}
+              ${isSelected ? 'ring-4 ring-black scale-105' : 'opacity-90'}
             `}
           />
         );

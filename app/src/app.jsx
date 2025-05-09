@@ -1,117 +1,165 @@
+// src/app.jsx
 import React, { useState, useEffect } from 'react';
-import { useGameStore } from './store';
-import { TownGrid } from './TownGrid';
-import { ResourceDeck } from './ResourceDeck';
-import { BuildingCards } from './BuildingCards';
-import {
-  saveGame,
-  calculateScore,
-  serializeBoard,
-  translateEmojisToSymbols,
-  checkAndUnlockAchievements
-} from './logic';
-import AchievementBanner from './AchievementBanner';
-import PlayerAchievements from './PlayerAchievements';
-import LeaderboardPanel from './LeaderboardPanel';
+import { ResourceDeck }    from './ResourceDeck';
+import { TownGrid }        from './TownGrid';
+import { BuildingCards }   from './BuildingCards';
+import PlayerAchievements  from './PlayerAchievements';
+import LeaderboardPanel    from './LeaderboardPanel';
+import { saveGame, calculateScore, translateEmojisToSymbols } from './logic';
+import { useGameStore }    from './store';
 
 export function App() {
-  const [unlocked, setUnlocked] = useState([]);
-  const [showBanner, setShowBanner] = useState(false);
-  const [leaderboardKey, setLeaderboardKey] = useState(0);
+  const [user, setUser] = useState(null);
 
-  const {
-    grid,
-    resetGrid,
-    startedAt
-  } = useGameStore(state => ({
-    grid: state.grid,
-    resetGrid: state.resetGrid,
-    startedAt: state.startedAt
-  }));
-
-  // ✅ Automatically initialize game on mount
   useEffect(() => {
-    resetGrid();
+    const unsub = window.firebaseAuth.onAuthStateChanged(u => setUser(u));
+    return () => unsub();
   }, []);
 
+  if (!user) return <LoginScreen />;
+  return <GameUI user={user} />;
+}
+
+function LoginScreen() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 bg-opacity-75">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-80 text-gray-800">
+        <h2 className="text-2xl font-bold mb-4 text-center">Tiny Towns</h2>
+        <input
+          id="email"
+          type="email"
+          placeholder="Email"
+          className="w-full p-2 mb-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <input
+          id="password"
+          type="password"
+          placeholder="Password"
+          className="w-full p-2 mb-4 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <button
+          onClick={() =>
+            window.firebaseAuth.signInWithEmailAndPassword(
+              document.getElementById('email').value,
+              document.getElementById('password').value
+            )
+          }
+          className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mb-2"
+        >
+          Login
+        </button>
+        <button
+          onClick={() =>
+            window.firebaseAuth.createUserWithEmailAndPassword(
+              document.getElementById('email').value,
+              document.getElementById('password').value
+            )
+          }
+          className="w-full py-2 bg-green-500 text-white rounded hover:bg-green-600 mb-2"
+        >
+          Register
+        </button>
+        <button
+          onClick={() => {
+            const provider = new window.firebase.auth.GoogleAuthProvider();
+            window.firebaseAuth.signInWithPopup(provider);
+          }}
+          className="w-full py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          Login with Google
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GameUI({ user }) {
+  const resetGrid   = useGameStore(s => s.resetGrid);
+  const grid        = useGameStore(s => s.grid);
+  const startedAt   = useGameStore(s => s.startedAt);
+  const [leaderKey, setLeaderKey] = useState(0);
+
+  // on mount: shuffle and deal your resource deck
+  useEffect(() => {
+    resetGrid();
+  }, [resetGrid]);
+
   const handleEndGame = async () => {
-    const auth = window.firebaseAuth;
-    const user = auth.currentUser;
+    const idToken    = await user.getIdToken();
+    const symbolGrid = translateEmojisToSymbols(grid);
+    const board      = symbolGrid.join('');
+    const score      = calculateScore(symbolGrid);
+    const endTime    = new Date().toISOString();
 
-    if (!user) {
-      alert("You must be signed in to save your game.");
-      return;
+    // save the game
+    await saveGame(board, score, startedAt, endTime, idToken);
+
+    // ask for a town name & submit it
+    const townName = prompt("Name your town to submit it to the leaderboard:")?.trim();
+    if (townName) {
+      await fetch("http://localhost:3000/leaderboard", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ townName, score })
+      });
+      // refresh the leaderboard panel
+      setLeaderKey(k => k + 1);
     }
 
-    try {
-      const idToken = await user.getIdToken();
-      const symbolGrid = translateEmojisToSymbols(grid);
-      const serializedBoard = serializeBoard(symbolGrid);
-      const score = calculateScore(symbolGrid);
-      const finishedAt = new Date().toISOString();
-
-      await saveGame(serializedBoard, score, startedAt, finishedAt, idToken);
-      const newAchievements = await checkAndUnlockAchievements(
-        symbolGrid,
-        score,
-        startedAt,
-        finishedAt,
-        idToken
-      );
-
-      const townName = prompt("Name your town to submit it to the leaderboard:")?.trim();
-      if (townName && townName.length > 0) {
-        await fetch("http://localhost:3000/leaderboard", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${idToken}`
-          },
-          body: JSON.stringify({
-            townName,
-            score
-          })
-        });
-        setLeaderboardKey(prev => prev + 1); // ✅ refresh leaderboard
-      }
-
-      if (newAchievements.length > 0) {
-        setUnlocked(newAchievements);
-        setShowBanner(true);
-        setTimeout(() => setShowBanner(false), 5000);
-      }
-
-      alert("Game saved successfully!");
-      resetGrid();
-    } catch (error) {
-      console.error("Failed to end game:", error);
-      alert("Failed to save game.");
-    }
+    resetGrid();
+    alert("Game saved!");
   };
 
   return (
-    <div className="text-center py-6 relative">
-      <h1 className="text-3xl font-bold mb-4">Tiny Towns</h1>
-      <ResourceDeck />
-      <TownGrid />
-      <BuildingCards />
-      <PlayerAchievements />
-      {showBanner && <AchievementBanner unlocked={unlocked} />}
-      <div className="flex justify-center gap-4 mt-6">
-        <button
-          onClick={resetGrid}
-          className="bg-green-500 px-4 py-2 rounded text-white"
-        >
-          Restart
-        </button>
-        <button
-          onClick={handleEndGame}
-          className="bg-red-500 px-4 py-2 rounded text-white"
-        >
-          End Game
-        </button>
-      </div>
-      <LeaderboardPanel refreshTrigger={leaderboardKey} />
+    <div className="flex flex-col min-h-screen">
+      {/* header */}
+      <header className="flex justify-between items-center px-4 py-3 bg-gray-800 text-gray-200">
+        <div>
+          Welcome, <span className="font-semibold">{user.displayName || user.email}</span>
+        </div>
+        <div className="space-x-2">
+          <button
+            onClick={resetGrid}
+            className="px-3 py-1 bg-green-500 rounded hover:bg-green-600"
+          >
+            Restart
+          </button>
+          <button
+            onClick={handleEndGame}
+            className="px-3 py-1 bg-red-500 rounded hover:bg-red-600"
+          >
+            End Game
+          </button>
+          <button
+            onClick={() => window.firebaseAuth.signOut()}
+            className="px-3 py-1 bg-gray-600 rounded hover:bg-gray-700"
+          >
+            Logout
+          </button>
+        </div>
+      </header>
+
+      {/* main content: achievements | deck & grid | leaderboard */}
+      <main className="flex flex-1 overflow-hidden px-6 py-4">
+        <div className="w-1/3 pr-4 overflow-auto">
+          <PlayerAchievements />
+        </div>
+        <div className="w-1/3 flex flex-col items-center justify-center space-y-4">
+          <ResourceDeck />
+          <TownGrid />
+        </div>
+        <div className="w-1/3 pl-4 overflow-auto">
+          <LeaderboardPanel refreshTrigger={leaderKey} />
+        </div>
+      </main>
+
+      {/* building cards along bottom */}
+      <footer className="bg-gray-800 px-6 py-4">
+        <BuildingCards />
+      </footer>
     </div>
   );
 }

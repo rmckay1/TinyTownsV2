@@ -127,12 +127,12 @@ app.get("/player-data", async (req, res) => {
   }
 });
 
-app.post('/leaderboard', async (req, res) => {
+app.post("/leaderboard", async (req, res) => {
   const idToken = req.headers.authorization?.split("Bearer ")[1];
   const { townName, score } = req.body;
 
-  if (!townName || !score) {
-    return res.status(400).send({ error: "Missing data" });
+  if (!townName || score == null) {
+    return res.status(400).send({ error: "Name and score are required" });
   }
 
   try {
@@ -141,29 +141,14 @@ app.post('/leaderboard', async (req, res) => {
 
     await db.collection("leaderboard").add({
       townName,
-      score: parseInt(score),
+      score: parseInt(score, 10),
       userId: uid,
-      timestamp: new Date().toISOString()
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    return res.status(200).send({ success: true });
+    res.status(200).send({ success: true });
   } catch (err) {
-    console.error("Failed to save leaderboard entry:", err);
-    return res.status(500).send({ error: "Internal error" });
-  }
-});
-
-app.get('/leaderboard', async (req, res) => {
-  try {
-    const snapshot = await db.collection("leaderboard")
-      .orderBy("score", "desc")
-      .limit(10)
-      .get();
-
-    const topTowns = snapshot.docs.map(doc => doc.data());
-    res.status(200).send(topTowns);
-  } catch (err) {
-    console.error("Failed to get leaderboard:", err);
+    console.error("Leaderboard save failed:", err);
     res.status(500).send({ error: "Internal error" });
   }
 });

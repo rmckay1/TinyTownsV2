@@ -11,8 +11,12 @@ const RESOURCE_COLORS = {
 
 export function TownGrid() {
   const {
-    grid, selectedTiles, placeResource, toggleTileSelection,
-    isPlacingBuilding, confirmBuildingPlacement
+    grid,
+    selectedTiles,
+    placeResource,
+    toggleTileSelection,
+    isPlacingBuilding,
+    confirmBuildingPlacement
   } = useGameStore(state => ({
     grid: state.grid,
     selectedTiles: state.selectedTiles,
@@ -34,18 +38,22 @@ export function TownGrid() {
   };
 
   return (
-    <div className="grid grid-cols-4 gap-2 max-w-xs mx-auto">
-      {grid.map((tile, i) => (
-        <button
-          key={i}
-          onClick={() => handleClick(i)}
-          className={`w-16 h-16 border flex items-center justify-center 
-                      ${RESOURCE_COLORS[tile] || 'bg-gray-100'} 
-                      ${isSelected(i) ? 'ring-4 ring-yellow-400' : ''}`}
-        >
-          {!RESOURCE_COLORS[tile] ? tile : ""}
-        </button>
-      ))}
+    <div className="w-full flex justify-center">
+      <div className="grid grid-cols-4 gap-2">
+        {grid.map((tile, i) => (
+          <button
+            key={i}
+            onClick={() => handleClick(i)}
+            className={`
+              w-16 h-16 border flex items-center justify-center
+              ${RESOURCE_COLORS[tile] || 'bg-gray-100'}
+              ${isSelected(i) ? 'ring-4 ring-yellow-400' : ''}
+            `}
+          >
+            {!RESOURCE_COLORS[tile] ? tile : ""}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

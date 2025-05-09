@@ -1,5 +1,5 @@
 // src/app.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ResourceDeck }    from './ResourceDeck';
 import { TownGrid }        from './TownGrid';
 import { BuildingCards }   from './BuildingCards';
@@ -74,25 +74,29 @@ function LoginScreen() {
 }
 
 function GameUI({ user }) {
+  // Zustand selectors
   const resetGrid   = useGameStore(s => s.resetGrid);
   const grid        = useGameStore(s => s.grid);
   const startedAt   = useGameStore(s => s.startedAt);
   const [leaderKey, setLeaderKey] = useState(0);
 
-  // on mount: shuffle and deal your resource deck
+  // Compute current score
+  const symbolGrid = useMemo(() => translateEmojisToSymbols(grid), [grid]);
+  const score      = useMemo(() => calculateScore(symbolGrid), [symbolGrid]);
+
+  // on mount: initialize the game
   useEffect(() => {
     resetGrid();
   }, [resetGrid]);
 
   const handleEndGame = async () => {
     const idToken    = await user.getIdToken();
-    const symbolGrid = translateEmojisToSymbols(grid);
     const board      = symbolGrid.join('');
-    const score      = calculateScore(symbolGrid);
+    const scoreValue = calculateScore(symbolGrid);
     const endTime    = new Date().toISOString();
 
     // save the game
-    await saveGame(board, score, startedAt, endTime, idToken);
+    await saveGame(board, scoreValue, startedAt, endTime, idToken);
 
     // ask for a town name & submit it
     const townName = prompt("Name your town to submit it to the leaderboard:")?.trim();
@@ -103,9 +107,8 @@ function GameUI({ user }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${idToken}`
         },
-        body: JSON.stringify({ townName, score })
+        body: JSON.stringify({ townName, score: scoreValue })
       });
-      // refresh the leaderboard panel
       setLeaderKey(k => k + 1);
     }
 
@@ -148,6 +151,10 @@ function GameUI({ user }) {
           <PlayerAchievements />
         </div>
         <div className="w-1/3 flex flex-col items-center justify-center space-y-4">
+          {/* Current score display */}
+          <div className="text-xl font-bold text-white">Score: {score}</div>
+
+          {/* resource deck & grid */}
           <ResourceDeck />
           <TownGrid />
         </div>

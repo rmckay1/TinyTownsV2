@@ -68,7 +68,7 @@ describe('serializeBoard', () => {
 
 describe('translateEmojisToSymbols', () => {
   test('emoji to code mapping', () => {
-    const input = ['🪵','🧱','🌾','🧊','🪨','🏠'];
+    const input = ['wood','brick','wheat','glass','stone','🏠'];
     expect(translateEmojisToSymbols(input)).toEqual(
       ['w','b','h','g','s','C']
     );

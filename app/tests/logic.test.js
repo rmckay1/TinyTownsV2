@@ -48,7 +48,7 @@ describe('calculateScore', () => {
     expect(calculateScore(grid)).toBe(2);
   });
 
-  
+
 });
 
 describe('serializeBoard', () => {
@@ -155,5 +155,115 @@ describe('serializeBoard (unexpected values)', () => {
     expect(serializeBoard(['foo','bar',null])).toBe('...'); 
   });
 });
+
+// --- Mapping Tests ---
+describe('translateEmojisToSymbols mapping', () => {
+  it('maps UI emojis to symbols correctly', () => {
+    const emojis = ['wood','brick','wheat','glass','stone','🏠','🎭','🏭','💒','🍺','⛪'];
+    expect(translateEmojisToSymbols(emojis)).toEqual([
+      'w','b','h','g','s','C','T','F','P','V','M'
+    ]);
+  });
+
+  it('maps named tiles via TILE_SYMBOLS', () => {
+    const names = ['wood','brick','Farm','Cathedral','foo'];
+    expect(serializeBoard(names)).toBe('wbAM.');
+  });
+});
+
+// --- Score Calculation Tests ---
+describe('calculateScore scoring rules', () => {
+  it('adds adjacency for wells and applies empty penalty', () => {
+    const grid = Array(16).fill(null);
+    // Place a well at index 5, cottages at 1,6
+    grid[5] = 'W';
+    grid[1] = 'C';
+    grid[6] = 'C';
+    // cottages=2, farms=0, chapels=0, taverns=0, hasCathedral=false
+    // adjacency score=2; fed=0 so +0; taverns=0; penalty= - (16-3)= -13
+    expect(calculateScore(grid)).toBe(2 - 13);
+  });
+
+  it('calculates farm feeding and chapel bonus', () => {
+    const grid = Array(16).fill(null);
+    // Three cottages and one farm and one chapel
+    grid[0] = 'C'; grid[1] = 'C'; grid[2] = 'C';
+    grid[3] = 'A'; // farm
+    grid[4] = 'P'; // chapel
+    // cottages=3, farms=1 -> fed=min(3,1*4)=3 -> +3*3=9; chapels=1 -> +1*3=3
+    // total so far=12; penalty= -(16-5)= -11 => 1
+    expect(calculateScore(grid)).toBe(12 - 11);
+  });
+
+  it('cathedral gives base +2 and waives empty penalty', () => {
+    const grid = Array(16).fill(null);
+    grid[7] = 'M';
+    // only cathedral: +2, hasCathedral true, no penalty
+    expect(calculateScore(grid)).toBe(2);
+  });
+
+  it('theatre counts unique row/col buildings', () => {
+    const grid = Array(16).fill(null);
+    // Place theatre at (1,1)->index 5
+    grid[5] = 'T'; //should make 3
+    // Place unique buildings in same row and col: at index 4 ('C'), at 6 ('C'), at index 1('A')
+    grid[4] = 'C'; //should make 3
+    grid[6] = 'F'; //0
+    grid[1] = 'A'; //0
+    // Unique non-T: C,F,A => 3; penalty=-(16-4)= -12 => 3-12 = -9
+    expect(calculateScore(grid)).toBe(-16 + 6 + 4);
+  });
+});
+
+// --- Achievement Unlocking Tests ---
+describe('checkAndUnlockAchievements flow', () => {
+  const dummyToken = 'tok';
+  const now = new Date().toISOString();
+
+  beforeEach(() => {
+    vi.spyOn(logic, 'unlockAchievement').mockImplementation(async id => id);
+    vi.spyOn(logic, 'updateHighestScore').mockResolvedValue();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('unlocks perfectTown when grid full', async () => {
+    const full = Array(16).fill('C');
+    const unlocked = await checkAndUnlockAchievements(full, 10, now, now, dummyToken);
+    expect(unlocked).toContain('perfectTown');
+  });
+
+  it('unlocks masterBuilder on high score', async () => {
+    const grid = [null, null];
+    const unlocked = await checkAndUnlockAchievements(grid, 100, now, now, dummyToken);
+    expect(unlocked).toContain('masterBuilder');
+  });
+
+  it('unlocks varietyPack with 3 types', async () => {
+    const grid = ['C','A','V', ...Array(13).fill(null)];
+    const unlocked = await checkAndUnlockAchievements(grid, 0, now, now, dummyToken);
+    expect(unlocked).toContain('varietyPack');
+  });
+
+  it('unlocks speedy when played quickly', async () => {
+    const grid = [null,'C'];
+    const later = new Date(Date.now() + 50000).toISOString(); // 50 sec later
+    const unlocked = await checkAndUnlockAchievements(grid, 1, now, later, dummyToken);
+    expect(unlocked).toContain('speedy');
+  });
+
+  it('unlocks farmLife when >=3 farms', async () => {
+    const grid = ['A','A','A', ...Array(13).fill(null)];
+    const unlocked = await checkAndUnlockAchievements(grid, 0, now, now, dummyToken);
+    expect(unlocked).toContain('farmLife');
+  });
+
+  it('calls updateHighestScore at end', async () => {
+    await checkAndUnlockAchievements([], 5, now, now, dummyToken);
+    expect(logic.updateHighestScore).toHaveBeenCalledWith(5, dummyToken);
+  });
+});
+
 
 

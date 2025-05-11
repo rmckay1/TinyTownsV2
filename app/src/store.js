@@ -86,7 +86,9 @@ export const gameStore = create((set, get) => ({
   },
 
   placeBuilding: () => {
-    const { activeRecipe, selectedTiles } = get();
+    const { activeRecipe, selectedTiles, grid } = get();
+    // Only allow Cathedral once per game
+    if (activeRecipe?.name === 'Cathedral' && grid.includes(activeRecipe.icon)) return;
     if (!activeRecipe || selectedTiles.length === 0) return;
     set({ isPlacingBuilding: true });
   },

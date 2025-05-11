@@ -1,9 +1,19 @@
-import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, test, it, vi } from 'vitest';
 import { gameStore } from '../src/store.js';
+import { wellRec, cathedralRec, factoryRec } from '../src/recipes.js';
+
+// Helper to reset the store to default minimal state
+function resetMinimal() {
+  gameStore.setState({
+    grid: Array(16).fill(null),
+    selectedTiles: [],
+    activeRecipe: null,
+    isPlacingBuilding: false,
+  });
+}
 
 describe('gameStore (core logic)', () => {
   beforeEach(() => {
-    // Force deterministic shuffling
     vi.spyOn(Math, 'random').mockReturnValue(0);
     gameStore.getState().resetGrid();
   });
@@ -18,7 +28,6 @@ describe('gameStore (core logic)', () => {
     expect(state.grid.every(c => c === null)).toBe(true);
 
     expect(state.visibleResources).toHaveLength(3);
-    // fullDeck = 5 resources × 15 each = 75 cards
     expect(state.resourceDeck).toHaveLength(75 - 3);
 
     expect(state.selectedResourceIndex).toBeNull();
@@ -34,7 +43,6 @@ describe('gameStore (core logic)', () => {
 
   test('placeResource places a resource and updates decks', () => {
     const initial = gameStore.getState();
-    // choose the first visible card
     gameStore.getState().setSelectedResource(0);
     const firstCard = initial.visibleResources[0];
     const nextUp = initial.resourceDeck[0];
@@ -42,57 +50,90 @@ describe('gameStore (core logic)', () => {
     gameStore.getState().placeResource(5);
     const state = gameStore.getState();
 
-    // resource placed
     expect(state.grid[5]).toBe(firstCard);
-    // selection cleared
     expect(state.selectedResourceIndex).toBeNull();
-    // visible slot refilled from deck
     expect(state.visibleResources[0]).toBe(nextUp);
-    // deck size unchanged
     expect(state.resourceDeck).toHaveLength(75 - 3);
   });
 });
 
-// tests/store.test.js
-import { gameStore } from '../src/store.js';
-import { wellRec } from '../src/recipes.js';
-
+// Building placement flow
 describe('gameStore (building placement flow)', () => {
-  it('can select, match, place, and confirm a Well building', () => {
-    // 1) Reset and force visible resources to [wood, stone, ...]
+  beforeEach(() => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     gameStore.getState().resetGrid();
-    gameStore.setState({
-      visibleResources: ['wood', 'stone', 'brick'],
-      resourceDeck: []
-    });
+  });
 
-    // 2) Pick wood and place it at index 0
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('can select, match, place, and confirm a Well building', () => {
+    gameStore.getState().resetGrid();
+    gameStore.setState({ visibleResources: ['wood', 'stone', 'brick'], resourceDeck: [] });
+
     gameStore.getState().setSelectedResource(0);
     gameStore.getState().placeResource(0);
-    // 3) Pick stone and place it at index 1
     gameStore.getState().setSelectedResource(1);
     gameStore.getState().placeResource(1);
 
-    // 4) Select those two tiles for matching
     gameStore.getState().toggleTileSelection(0);
     gameStore.getState().toggleTileSelection(1);
-
-    // Should now have wellRec as the active recipe
     expect(gameStore.getState().activeRecipe).toBe(wellRec);
 
-    // 5) Enter placement mode
     gameStore.getState().placeBuilding();
     expect(gameStore.getState().isPlacingBuilding).toBe(true);
 
-    // 6) Confirm placement at index 2
     gameStore.getState().confirmBuildingPlacement(2);
     const gridAfter = gameStore.getState().grid;
     expect(gridAfter[2]).toBe(wellRec.icon);
 
-    // 7) After confirmation, selection and mode reset
     expect(gameStore.getState().selectedTiles).toHaveLength(0);
     expect(gameStore.getState().activeRecipe).toBeNull();
     expect(gameStore.getState().isPlacingBuilding).toBe(false);
   });
 });
 
+// Cathedral restriction tests
+describe('gameStore (Cathedral restriction)', () => {
+  beforeEach(() => {
+    resetMinimal();
+  });
+
+  it('allows placing a Cathedral once', () => {
+    gameStore.setState({ selectedTiles: [{ index: 3 }], activeRecipe: cathedralRec });
+    gameStore.getState().placeBuilding();
+    expect(gameStore.getState().isPlacingBuilding).toBe(true);
+
+    gameStore.getState().confirmBuildingPlacement(3);
+    expect(gameStore.getState().grid[3]).toBe(cathedralRec.icon);
+    expect(gameStore.getState().isPlacingBuilding).toBe(false);
+  });
+
+  it('blocks placing a second Cathedral', () => {
+    // First placement
+    gameStore.setState({ selectedTiles: [{ index: 4 }], activeRecipe: cathedralRec });
+    gameStore.getState().placeBuilding();
+    gameStore.getState().confirmBuildingPlacement(4);
+    expect(gameStore.getState().grid[4]).toBe(cathedralRec.icon);
+
+    // Attempt second
+    gameStore.setState({ selectedTiles: [{ index: 5 }], activeRecipe: cathedralRec, isPlacingBuilding: false });
+    gameStore.getState().placeBuilding();
+    expect(gameStore.getState().isPlacingBuilding).toBe(false);
+  });
+
+  it('allows placing other buildings multiple times', () => {
+    gameStore.setState({ selectedTiles: [{ index: 6 }], activeRecipe: factoryRec });
+    gameStore.getState().placeBuilding();
+    expect(gameStore.getState().isPlacingBuilding).toBe(true);
+
+    gameStore.getState().confirmBuildingPlacement(6);
+    expect(gameStore.getState().grid[6]).toBe(factoryRec.icon);
+
+    // Reset
+    gameStore.setState({ selectedTiles: [{ index: 7 }], activeRecipe: factoryRec, isPlacingBuilding: false });
+    gameStore.getState().placeBuilding();
+    expect(gameStore.getState().isPlacingBuilding).toBe(true);
+  });
+});

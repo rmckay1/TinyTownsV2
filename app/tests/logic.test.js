@@ -47,6 +47,8 @@ describe('calculateScore', () => {
     // cathedral itself is 2 pts, and no empty penalty
     expect(calculateScore(grid)).toBe(2);
   });
+
+  
 });
 
 describe('serializeBoard', () => {

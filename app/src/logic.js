@@ -25,6 +25,14 @@ export function serializeBoard(grid) {
 }
 
 // Score calculation
+// Well done
+// Theatre done
+// Factory doesn't contribute to score
+// Cottage done
+// Chapel done
+// Tavern done
+// Farm done
+// Catherderal done
 export function calculateScore(grid) {
   let score = 0;
   let cottages = 0;

@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
 
 const achievementDetails = {
-  perfectTown: { name: "Perfect Town", icon: "🏡", desc: "Fill all 16 tiles" },
+  perfectTown:   { name: "Perfect Town", icon: "🏡", desc: "Fill all 16 tiles" },
   masterBuilder: { name: "Master Builder", icon: "🏗️", desc: "Score 50+ points" },
-  varietyPack: { name: "Variety Pack", icon: "🎲", desc: "Place 3+ building types" },
-  speedy: { name: "Speed Builder", icon: "⚡", desc: "Finish under 3 minutes" },
-  farmLife: { name: "Farm Life", icon: "🌾", desc: "Place 3+ farms" }
+  varietyPack:   { name: "Variety Pack", icon: "🎲", desc: "Place 3+ building types" },
+  speedy:        { name: "Speed Builder", icon: "⚡", desc: "Finish under 3 minutes" },
+  farmLife:      { name: "Farm Life", icon: "🌾", desc: "Place 3+ farms" },
+  wellFed:       { name: "Well Fed", icon: "🍽️", desc: "Feed your first cottage" },
+  pious:         { name: "Pious", icon: "🛐", desc: "Build your first cathedral" },
+  hammered:      { name: "Hammered", icon: "🔨", desc: "Build 5 taverns" }
 };
+
 
 export default function PlayerAchievements() {
   const [unlocked, setUnlocked] = useState([]);

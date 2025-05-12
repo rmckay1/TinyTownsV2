@@ -212,14 +212,20 @@ export async function checkAndUnlockAchievements(
   const types      = new Set(grid.filter(x => /^[A-Z]$/.test(x)));
 
   // Decide which achievements to try
-  console.log(grid)
+  console.log(grid);
   const toTry = [];
   if (nonEmpty === grid.length)           toTry.push('perfectTown');
   if (score >= 50)                         toTry.push('masterBuilder');
   if (types.size >= 3)                     toTry.push('varietyPack');
   if (elapsedSec < 180 && nonEmpty > 0)    toTry.push('speedy');
+  // New achievements:
+  if (grid.includes('M'))                  toTry.push('pious');    // build first cathedral
+  if (grid.filter(x => x === 'C').length > 0 && grid.filter(x => x === 'A').length > 0)
+                                          toTry.push('wellFed');  // feed first cottage
+  if (grid.filter(x => x === 'V').length >= 5)
+                                          toTry.push('hammered'); // build 5 taverns
   if (grid.filter(x => x === 'A').length >= 3) toTry.push('farmLife');
-
+    
   const unlocked = [];
   // dynamic import of ourselves – this is the key so that
   // `vi.spyOn(logic, 'unlockAchievement')` from your tests will actually be called

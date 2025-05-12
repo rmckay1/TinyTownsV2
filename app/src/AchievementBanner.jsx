@@ -6,7 +6,10 @@ const achievementLabels = {
   masterBuilder: "🏗️ Master Builder",
   varietyPack: "🎲 Variety Pack",
   speedy: "⚡ Speed Builder",
-  farmLife: "🌾 Farm Life"
+  farmLife: "🌾 Farm Life",
+  wellFed: "🍽️ Well Fed",
+  pious: "🛐 Pious",
+  hammered: "🔨 Hammered"
 };
 
 export default function AchievementBanner({ unlocked }) {

@@ -72,14 +72,16 @@ export function BuildingCards() {
             {rec.name === 'Tavern' && (
             <table className="text-xs text-gray-600 text-center mb-2 w-full border-collapse">
               <thead>
-                <tr>🍺
+                <tr>
+                  <th className="border px-1">🍺</th>
                   {[1, 2, 4, 4, 5].map((count, i) => (
                     <th key={i} className="border px-1">{count}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                <tr>💎
+                <tr>
+                  <td className="border px-1">💎</td>
                   {[2, 4, 9, 14, 20].map((pts, i) => (
                     <td key={i} className="border px-1">{pts}</td>
                   ))}

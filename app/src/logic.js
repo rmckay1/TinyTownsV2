@@ -108,11 +108,12 @@ export function calculateScore(grid) {
   else if (taverns === 4) score += 14;
   else if (taverns >= 5)  score += 20;
 
-  // Empty‐tile penalty (unless you built a cathedral)
-  if (!hasCathedral) {
-    const emptyCount = grid.filter(cell => cell == null).length;
-    score -= emptyCount;
-  }
+// Empty‐tile penalty (unless you built a cathedral)
+if (!hasCathedral) {
+  const buildingSymbols = ['C', 'T', 'F', 'W', 'M', 'A', 'P', 'V']; // all valid buildings
+  const emptyOrUnbuiltCount = grid.filter(cell => !buildingSymbols.includes(cell)).length;
+  score -= emptyOrUnbuiltCount;
+}
 
   return score;
 }
@@ -132,6 +133,7 @@ export function translateEmojisToSymbols(grid) {
     '💒': 'P', // Chapel
     '🍺': 'V', // Tavern
     '⛪': 'M', // Cathedral
+    '🌾': 'A', // Farm
   };
   return grid.map(cell => emojiMap[cell] || cell || '.');
 }

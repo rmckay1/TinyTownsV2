@@ -1,12 +1,15 @@
 // src/app.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { ResourceDeck }    from './ResourceDeck';
-import { TownGrid }        from './TownGrid';
-import { BuildingCards }   from './BuildingCards';
-import PlayerAchievements  from './PlayerAchievements';
-import LeaderboardPanel    from './LeaderboardPanel';
+import { ResourceDeck } from './ResourceDeck';
+import { TownGrid } from './TownGrid';
+import { BuildingCards } from './BuildingCards';
+import PlayerAchievements from './PlayerAchievements';
+import LeaderboardPanel from './LeaderboardPanel';
 import { saveGame, calculateScore, translateEmojisToSymbols } from './logic';
-import { useGameStore }    from './store';
+import { useGameStore } from './store';
+import { FactoryResourceSelection } from './FactoryOverrideButtons.jsx';
+import { ResourcePlacedAnimation } from './ResourcePlacedAnimation.jsx';
+
 
 export function App() {
   const [user, setUser] = useState(null);
@@ -75,14 +78,17 @@ function LoginScreen() {
 
 function GameUI({ user }) {
   // Zustand selectors
-  const resetGrid   = useGameStore(s => s.resetGrid);
-  const grid        = useGameStore(s => s.grid);
-  const startedAt   = useGameStore(s => s.startedAt);
+  const resetGrid = useGameStore(s => s.resetGrid);
+  const grid = useGameStore(s => s.grid);
+  const startedAt = useGameStore(s => s.startedAt);
   const [leaderKey, setLeaderKey] = useState(0);
+  const showFactoryAssignPopup = useGameStore(s => s.showFactoryAssignPopup);
+  console.log("Popup showFactoryAssignPopup:", showFactoryAssignPopup);
+  const pendingFactoryOverride = useGameStore(s => s.pendingFactoryOverride);
 
   // Compute current score
   const symbolGrid = useMemo(() => translateEmojisToSymbols(grid), [grid]);
-  const score      = useMemo(() => calculateScore(symbolGrid), [symbolGrid]);
+  const score = useMemo(() => calculateScore(symbolGrid), [symbolGrid]);
 
   // on mount: initialize the game
   useEffect(() => {
@@ -90,10 +96,10 @@ function GameUI({ user }) {
   }, [resetGrid]);
 
   const handleEndGame = async () => {
-    const idToken    = await user.getIdToken();
-    const board      = symbolGrid.join('');
+    const idToken = await user.getIdToken();
+    const board = symbolGrid.join('');
     const scoreValue = calculateScore(symbolGrid);
-    const endTime    = new Date().toISOString();
+    const endTime = new Date().toISOString();
 
     // save the game
     await saveGame(board, scoreValue, startedAt, endTime, idToken);
@@ -167,6 +173,13 @@ function GameUI({ user }) {
       <footer className="bg-gray-800 px-6 py-4">
         <BuildingCards />
       </footer>
+
+      {/* Show Factory resource selection popup if needed */}
+      {showFactoryAssignPopup && <FactoryResourceSelection />}
+
+      {/* Show animation when factory override is used */}
+      <ResourcePlacedAnimation />
+
     </div>
   );
 }

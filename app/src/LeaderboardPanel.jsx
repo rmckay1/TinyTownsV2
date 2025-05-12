@@ -4,19 +4,25 @@ import React, { useEffect, useState } from 'react';
 export default function LeaderboardPanel({ refreshTrigger }) {
   const [leaders, setLeaders] = useState([]);
 
-  useEffect(() => {
-    const fetchLeaders = async () => {
-      try {
-        const res = await fetch("http://localhost:3000/leaderboard");
+useEffect(() => {
+  const fetchLeaders = async () => {
+    try {
+      const res = await fetch("http://localhost:3000/leaderboard");
+    
+      // If the response is OK, parse the JSON
+      if (res.ok) {
         const data = await res.json();
-        setLeaders(data || []);
-      } catch (err) {
-        console.error("Error fetching leaderboard:", err);
+        setLeaders(data);
+      } else {
+        console.error("Error fetching leaderboard:", res.status, res.statusText);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching leaderboard:", err);
+    }
+  };
 
-    fetchLeaders();
-  }, [refreshTrigger]);
+  fetchLeaders();
+}, [refreshTrigger]);
 
   return (
     <div className="bg-white text-gray-800 rounded-lg shadow-lg p-4 w-full max-w-xs mx-auto">

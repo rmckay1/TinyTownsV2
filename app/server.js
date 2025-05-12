@@ -6,11 +6,8 @@ import cors from "cors";
 import admin from "firebase-admin";
 import dotenv from "dotenv";
 
-
-
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 
 const serviceAccount = JSON.parse(
   fs.readFileSync(path.join(__dirname, "serviceAccountKey.json"))
@@ -20,13 +17,10 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-
-
 const app = express();
 app.use(cors());
-app.options("*", cors()); // ✅ this line is crucial!
+app.options("*", cors());
 app.use(express.json());
-
 
 app.post("/save-game", async (req, res) => {
   const idToken = req.headers.authorization?.split("Bearer ")[1];
@@ -41,7 +35,7 @@ app.post("/save-game", async (req, res) => {
     await db.collection("games").add({
       uid,
       board,
-      score, // already a string
+      score,
       startTime: new Date(startTime),
       endTime: new Date(endTime)
     });
@@ -53,76 +47,90 @@ app.post("/save-game", async (req, res) => {
   }
 });
 
-app.post('/unlock-achievement', async (req, res) => {
+app.post("/unlock-achievement", async (req, res) => {
   const { achievementId } = req.body;
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace('Bearer ', '');
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
 
   try {
-    const decoded = await admin.auth().verifyIdToken(token);
+    const decoded = await admin.auth().verifyIdToken(idToken);
     const uid = decoded.uid;
 
-    const userRef = admin.firestore().collection('players').doc(uid);
+    const userRef = db.collection("players").doc(uid);
     const userSnap = await userRef.get();
 
     if (!userSnap.exists) {
-      await userRef.set({ achievements: [achievementId] });
-      return res.status(200).send({ newlyUnlocked: true });
-    }
-
-    const userData = userSnap.data();
-    const existing = userData.achievements || [];
-
-    if (existing.includes(achievementId)) {
-      return res.status(200).send({ newlyUnlocked: false });
+      console.warn(`❌ No player document found for UID: ${uid}`);
+      return res.status(404).send({ error: "Player not found" });
     }
 
     await userRef.update({
       achievements: admin.firestore.FieldValue.arrayUnion(achievementId)
     });
 
-    return res.status(200).send({ newlyUnlocked: true });
-
+    res.status(200).send({ newlyUnlocked: true });
   } catch (err) {
     console.error("Error unlocking achievement:", err);
-    return res.status(500).send("Internal error");
+    res.status(500).send("Internal error");
   }
 });
 
 
 app.post("/update-score", async (req, res) => {
   const idToken = req.headers.authorization?.split("Bearer ")[1];
+  const score = parseInt(req.body.score, 10);
+
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
     const uid = decoded.uid;
-    const { score } = req.body;
+
+    const playerRef = db.collection("players").doc(uid);
+    const playerSnap = await playerRef.get();
+    const existing = playerSnap.data()?.highestScore ?? -Infinity;
+
+    if (score > existing) {
+      await playerRef.update({ highestScore: score });
+    }
+
+    res.status(200).send({ success: true });
+  } catch (error) {
+    console.error("Error in /update-score route:", error);
+    res.status(500).send({ error: "Failed to update score" });
+  }
+});
+
+app.post("/create-player", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
 
     const playerRef = db.collection("players").doc(uid);
     const playerSnap = await playerRef.get();
 
-    const existing = playerSnap.exists ? playerSnap.data().highestScore || "0" : "0";
-
-    if (parseInt(score) > parseInt(existing)) {
-      await playerRef.set({ highestScore: score }, { merge: true });
+    if (!playerSnap.exists) {
+      await playerRef.set({
+        highestScore: -16,
+        achievements: [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
     }
 
-    res.status(200).send({ updated: true });
+    res.status(200).send({ created: true });
   } catch (error) {
-    res.status(500).send({ error: "Failed to update score" });
+    console.error("Failed to create player document:", error);
+    res.status(500).send({ error: "Failed to create player document" });
   }
 });
 
 app.get("/player-data", async (req, res) => {
   const idToken = req.headers.authorization?.split("Bearer ")[1];
+
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
     const uid = decoded.uid;
 
     const doc = await db.collection("players").doc(uid).get();
-    if (!doc.exists) {
-      return res.status(200).send({ achievements: [], highestScore: "0" });
-    }
-
     res.status(200).send(doc.data());
   } catch (err) {
     console.error("Failed to fetch player data:", err);
@@ -165,14 +173,12 @@ app.get("/leaderboard", async (req, res) => {
       .get();
 
     const leaderboard = snapshot.docs.map(doc => doc.data());
-
     res.status(200).json(leaderboard);
   } catch (err) {
     console.error("Failed to fetch leaderboard:", err);
     res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
 });
-
 
 const PORT = process.env.VITE_BACKEND_PORT || 3000;
 app.listen(PORT, () => {

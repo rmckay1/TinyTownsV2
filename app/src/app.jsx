@@ -53,17 +53,34 @@ function LoginScreen() {
         >
           Login
         </button>
-        <button
-          onClick={() =>
-            window.firebaseAuth.createUserWithEmailAndPassword(
-              document.getElementById('email').value,
-              document.getElementById('password').value
-            )
-          }
-          className="w-full py-2 bg-green-500 text-white rounded hover:bg-green-600 mb-2"
-        >
-          Register
-        </button>
+<button
+  onClick={async () => {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    try {
+      const userCredential = await window.firebaseAuth.createUserWithEmailAndPassword(email, password);
+      const user = userCredential.user;
+      const idToken = await user.getIdToken();
+
+      // Call backend to create player document
+      await fetch("http://localhost:3000/create-player", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        }
+      });
+
+      console.log("✅ Registered user and created player document");
+    } catch (err) {
+      console.error("❌ Error during registration or player creation:", err);
+    }
+  }}
+  className="w-full py-2 bg-green-500 text-white rounded hover:bg-green-600 mb-2"
+>
+  Register
+</button>
         <button
           onClick={() => {
             const provider = new window.firebase.auth.GoogleAuthProvider();
@@ -116,6 +133,28 @@ function GameUI({ user }) {
     );
     setJustUnlocked(unlocked);
     window.dispatchEvent(new Event('achievementsUpdated'));
+
+      // Update highest score if it's a new personal best
+  try {
+    const res = await fetch("http://localhost:3000/update-score", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`
+      },
+      body: JSON.stringify({ score: scoreValue })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("❌ Failed to update score:", data.error || res.statusText);
+    } else {
+      console.log("✅ Score update response:", data);
+    }
+  } catch (err) {
+    console.error("❌ Error during score update fetch:", err);
+  }
+
 
     const townName = prompt("Name your town to submit it to the leaderboard:")?.trim();
     if (townName) {

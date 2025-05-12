@@ -212,6 +212,7 @@ export async function checkAndUnlockAchievements(
   const types      = new Set(grid.filter(x => /^[A-Z]$/.test(x)));
 
   // Decide which achievements to try
+  console.log(grid)
   const toTry = [];
   if (nonEmpty === grid.length)           toTry.push('perfectTown');
   if (score >= 50)                         toTry.push('masterBuilder');

@@ -5,11 +5,11 @@ import { TownGrid } from './TownGrid';
 import { BuildingCards } from './BuildingCards';
 import PlayerAchievements from './PlayerAchievements';
 import LeaderboardPanel from './LeaderboardPanel';
-import { saveGame, calculateScore, translateEmojisToSymbols } from './logic';
+import AchievementBanner from './AchievementBanner';
+import { saveGame, calculateScore, translateEmojisToSymbols, checkAndUnlockAchievements } from './logic';
 import { useGameStore } from './store';
 import { FactoryResourceSelection } from './FactoryOverrideButtons.jsx';
 import { ResourcePlacedAnimation } from './ResourcePlacedAnimation.jsx';
-
 
 export function App() {
   const [user, setUser] = useState(null);
@@ -81,12 +81,14 @@ function GameUI({ user }) {
   const resetGrid = useGameStore(s => s.resetGrid);
   const grid = useGameStore(s => s.grid);
   const startedAt = useGameStore(s => s.startedAt);
-  const [leaderKey, setLeaderKey] = useState(0);
   const showFactoryAssignPopup = useGameStore(s => s.showFactoryAssignPopup);
-  console.log("Popup showFactoryAssignPopup:", showFactoryAssignPopup);
   const pendingFactoryOverride = useGameStore(s => s.pendingFactoryOverride);
 
-  // Compute current score
+  // Local UI state
+  const [leaderKey, setLeaderKey] = useState(0);
+  const [justUnlocked, setJustUnlocked] = useState([]);
+
+  // Compute derived values
   const symbolGrid = useMemo(() => translateEmojisToSymbols(grid), [grid]);
   const score = useMemo(() => calculateScore(symbolGrid), [symbolGrid]);
 
@@ -98,13 +100,25 @@ function GameUI({ user }) {
   const handleEndGame = async () => {
     const idToken = await user.getIdToken();
     const board = symbolGrid.join('');
-    const scoreValue = calculateScore(symbolGrid);
+    const scoreValue = score;
     const endTime = new Date().toISOString();
 
     // save the game
     await saveGame(board, scoreValue, startedAt, endTime, idToken);
 
-    // ask for a town name & submit it
+    // check for any new achievements at endgame
+    const unlocked = await checkAndUnlockAchievements(
+      symbolGrid,
+      scoreValue,
+      startedAt,
+      endTime,
+      idToken
+    );
+    setJustUnlocked(unlocked);
+    window.dispatchEvent(new Event('achievementsUpdated'));
+
+
+    // ask for a town name & submit it to leaderboard
     const townName = prompt("Name your town to submit it to the leaderboard:")?.trim();
     if (townName) {
       await fetch("http://localhost:3000/leaderboard", {
@@ -119,11 +133,15 @@ function GameUI({ user }) {
     }
 
     resetGrid();
-    alert("Game saved!");
   };
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* achievement banner at endgame */}
+      {justUnlocked.length > 0 && (
+        <AchievementBanner unlocked={justUnlocked} />
+      )}
+
       {/* header */}
       <header className="flex justify-between items-center px-4 py-3 bg-gray-800 text-gray-200">
         <div>
@@ -174,12 +192,9 @@ function GameUI({ user }) {
         <BuildingCards />
       </footer>
 
-      {/* Show Factory resource selection popup if needed */}
+      {/* popups/animations */}
       {showFactoryAssignPopup && <FactoryResourceSelection />}
-
-      {/* Show animation when factory override is used */}
       <ResourcePlacedAnimation />
-
     </div>
   );
 }

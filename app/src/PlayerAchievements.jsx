@@ -1,4 +1,3 @@
-// src/PlayerAchievements.jsx
 import React, { useEffect, useState } from 'react';
 
 const achievementDetails = {
@@ -12,49 +11,53 @@ const achievementDetails = {
 export default function PlayerAchievements() {
   const [unlocked, setUnlocked] = useState([]);
 
-  useEffect(() => {
-    const unsubscribe = window.firebaseAuth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        setUnlocked([]);
-        return;
-      }
-      const idToken = await user.getIdToken();
-      const res = await fetch("http://localhost:3000/player-data", {
-        headers: { Authorization: `Bearer ${idToken}` }
-      });
-      const data = await res.json();
-      setUnlocked(data.achievements || []);
+  const fetchAchievements = async (user) => {
+    if (!user) return setUnlocked([]);
+    const token = await user.getIdToken();
+    const res   = await fetch("http://localhost:3000/player-data", {
+      headers: { Authorization: `Bearer ${token}` }
     });
-    return () => unsubscribe();
+    const data  = await res.json();
+    setUnlocked(data.achievements || []);
+  };
+
+  useEffect(() => {
+    // 1) react to auth changes
+    const unsubAuth = window.firebaseAuth.onAuthStateChanged(fetchAchievements);
+
+    // 2) listen for manual refresh events
+    const onUpdate = () => fetchAchievements(window.firebaseAuth.currentUser);
+    window.addEventListener('achievementsUpdated', onUpdate);
+
+    return () => {
+      unsubAuth();
+      window.removeEventListener('achievementsUpdated', onUpdate);
+    };
   }, []);
 
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4 text-center">Your Achievements</h2>
-      <div className="grid grid-cols-2 gap-2 max-w-max mx-auto">
+      <div className="grid grid-cols-2 gap-3 max-w-max mx-auto">
         {Object.entries(achievementDetails).map(([id, detail]) => {
           const isUnlocked = unlocked.includes(id);
           return (
-            <div
-              key={id}
-              className="relative group w-24 h-24"
-            >
+            <div key={id} className="relative group w-24 h-24">
               <div className={`
-                rounded-lg overflow-hidden w-full h-full flex flex-col items-center justify-center
+                rounded-lg w-full h-full flex flex-col items-center justify-center
+                overflow-hidden transition-transform duration-200
                 ${isUnlocked
-                  ? 'bg-white border-2 border-yellow-400 text-gray-800 shadow'
-                  : 'bg-gray-700 border border-gray-600 text-gray-400'}
+                  ? 'bg-white border-2 border-yellow-500 text-gray-900 shadow-lg scale-105'
+                  : 'bg-gray-800 border border-gray-600 text-gray-400'}
               `}>
-                <div className="text-3xl">{isUnlocked ? detail.icon : '🔒'}</div>
+                <div className="text-4xl">{isUnlocked ? detail.icon : '🔒'}</div>
                 <div className="mt-1 text-sm text-center px-1">{detail.name}</div>
               </div>
-
-              {/* tooltip: wider fixed width so it doesn’t need to be so tall */}
               <div className="
-                absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2
+                absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2
                 opacity-0 group-hover:opacity-100 transition-opacity
                 pointer-events-none bg-black text-white text-xs px-3 py-1
-                rounded z-50 whitespace-normal w-32 text-center
+                rounded whitespace-normal w-32 text-center
               ">
                 {detail.desc}
               </div>

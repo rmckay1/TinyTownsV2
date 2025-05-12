@@ -23,7 +23,7 @@ beforeEach(() => {
 
 describe('calculateScore', () => {
   test('returns -16 for an empty board', () => {
-    const grid = Array(16).fill(null);
+    const grid = Array(16).fill('.');
     expect(calculateScore(grid)).toBe(-16);
   });
 
@@ -159,7 +159,7 @@ describe('serializeBoard (unexpected values)', () => {
 // --- Mapping Tests ---
 describe('translateEmojisToSymbols mapping', () => {
   it('maps UI emojis to symbols correctly', () => {
-    const emojis = ['wood','brick','wheat','glass','stone','🏠','🎭','🏭','💒','🍺','⛪'];
+    const emojis = ['wood','brick','wheat','glass','stone','🏠','🎭','🏭','💒','🍺','🛐'];
     expect(translateEmojisToSymbols(emojis)).toEqual([
       'w','b','h','g','s','C','T','F','P','V','M'
     ]);

@@ -42,10 +42,13 @@ export function calculateScore(grid) {
   let taverns = 0;
   let hasCathedral = false;
   const N = 4;
-  console.log(grid);
+  //console.log(grid);
   for (let i = 0; i < grid.length; i++) {
     const cell = grid[i];
     switch (cell) {
+      case null:
+        emptyCount++;
+        break;
       case '.':
         emptyCount++;
         break;
@@ -128,7 +131,7 @@ export function calculateScore(grid) {
   else if (taverns >= 5)  score += 20;
 
   // Empty‐tile penalty (unless you built a cathedral)
-  console.log(hasCathedral);
+  //console.log(hasCathedral);
   if (!hasCathedral) {
     score -= emptyCount;
   }

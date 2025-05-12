@@ -23,6 +23,18 @@ export const useGameStore = create((set, get) => ({
     chapelRec, farmRec, tavernRec, cathedralRec
   ],
 
+
+  animationTrigger: null,
+
+setAnimationTrigger: (type) => {
+  set({ animationTrigger: type });
+
+  // Automatically clear after 1 second
+  setTimeout(() => {
+    set({ animationTrigger: null });
+  }, 1000);
+},
+
   resetGrid: () => {
     const resources = ['wood', 'brick', 'wheat', 'glass', 'stone'];
     const fullDeck = resources.flatMap(res => Array(3).fill(res));
@@ -206,16 +218,23 @@ resolveFactoryOverride: (overrideResource) => {
 
   const newDeck = [...resourceDeck.slice(1), pendingFactoryOverride];
 
-  set({
-    grid: newGrid,
-    selectedTileIndex: null,
-    selectedResourceIndex: null,
-    visibleResources: newVisible,
-    resourceDeck: newDeck,
-    pendingFactoryOverride: null,
-    showFactoryAssignPopup: false
-  });
+set({
+  grid: newGrid,
+  selectedTileIndex: null,
+  selectedResourceIndex: null,
+  visibleResources: newVisible,
+  resourceDeck: newDeck,
+  pendingFactoryOverride: null,
+  showFactoryAssignPopup: false,
+  animationTrigger: 'factory-override' // Add this line
+});
+
+// Then trigger animation reset
+setTimeout(() => {
+  set({ animationTrigger: null });
+}, 1000);
 }
+
 
 
 

@@ -8,6 +8,8 @@ import LeaderboardPanel from './LeaderboardPanel';
 import { saveGame, calculateScore, translateEmojisToSymbols } from './logic';
 import { useGameStore } from './store';
 import { FactoryResourceSelection } from './FactoryOverrideButtons.jsx';
+import { ResourcePlacedAnimation } from './ResourcePlacedAnimation.jsx';
+
 
 export function App() {
   const [user, setUser] = useState(null);
@@ -174,6 +176,10 @@ function GameUI({ user }) {
 
       {/* Show Factory resource selection popup if needed */}
       {showFactoryAssignPopup && <FactoryResourceSelection />}
+
+      {/* Show animation when factory override is used */}
+      <ResourcePlacedAnimation />
+
     </div>
   );
 }

@@ -1,4 +1,3 @@
-// src/app.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { ResourceDeck } from './ResourceDeck';
 import { TownGrid } from './TownGrid';
@@ -10,6 +9,7 @@ import { saveGame, calculateScore, translateEmojisToSymbols, checkAndUnlockAchie
 import { useGameStore } from './store';
 import { FactoryResourceSelection } from './FactoryOverrideButtons.jsx';
 import { ResourcePlacedAnimation } from './ResourcePlacedAnimation.jsx';
+import { GameCompletePopup } from './GameCompletePopup.jsx';
 
 export function App() {
   const [user, setUser] = useState(null);
@@ -77,22 +77,20 @@ function LoginScreen() {
 }
 
 function GameUI({ user }) {
-  // Zustand selectors
   const resetGrid = useGameStore(s => s.resetGrid);
   const grid = useGameStore(s => s.grid);
   const startedAt = useGameStore(s => s.startedAt);
   const showFactoryAssignPopup = useGameStore(s => s.showFactoryAssignPopup);
   const pendingFactoryOverride = useGameStore(s => s.pendingFactoryOverride);
 
-  // Local UI state
   const [leaderKey, setLeaderKey] = useState(0);
   const [justUnlocked, setJustUnlocked] = useState([]);
+  const [showCompletePopup, setShowCompletePopup] = useState(false);
+  const [finalScore, setFinalScore] = useState(0); 
 
-  // Compute derived values
   const symbolGrid = useMemo(() => translateEmojisToSymbols(grid), [grid]);
   const score = useMemo(() => calculateScore(symbolGrid), [symbolGrid]);
 
-  // on mount: initialize the game
   useEffect(() => {
     resetGrid();
   }, [resetGrid]);
@@ -103,10 +101,8 @@ function GameUI({ user }) {
     const scoreValue = score;
     const endTime = new Date().toISOString();
 
-    // save the game
     await saveGame(board, scoreValue, startedAt, endTime, idToken);
 
-    // check for any new achievements at endgame
     const unlocked = await checkAndUnlockAchievements(
       symbolGrid,
       scoreValue,
@@ -117,8 +113,6 @@ function GameUI({ user }) {
     setJustUnlocked(unlocked);
     window.dispatchEvent(new Event('achievementsUpdated'));
 
-
-    // ask for a town name & submit it to leaderboard
     const townName = prompt("Name your town to submit it to the leaderboard:")?.trim();
     if (townName) {
       await fetch("http://localhost:3000/leaderboard", {
@@ -132,17 +126,17 @@ function GameUI({ user }) {
       setLeaderKey(k => k + 1);
     }
 
+    setFinalScore(scoreValue);
+    setShowCompletePopup(true); 
     resetGrid();
   };
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* achievement banner at endgame */}
       {justUnlocked.length > 0 && (
         <AchievementBanner unlocked={justUnlocked} />
       )}
 
-      {/* header */}
       <header className="flex justify-between items-center px-4 py-3 bg-gray-800 text-gray-200">
         <div>
           Welcome, <span className="font-semibold">{user.displayName || user.email}</span>
@@ -169,16 +163,12 @@ function GameUI({ user }) {
         </div>
       </header>
 
-      {/* main content: achievements | deck & grid | leaderboard */}
       <main className="flex flex-1 overflow-hidden px-6 py-4">
         <div className="w-1/3 pr-4 overflow-auto">
           <PlayerAchievements />
         </div>
         <div className="w-1/3 flex flex-col items-center justify-center space-y-4">
-          {/* Current score display */}
           <div className="text-xl font-bold text-white">Score: {score}</div>
-
-          {/* resource deck & grid */}
           <ResourceDeck />
           <TownGrid />
         </div>
@@ -187,14 +177,19 @@ function GameUI({ user }) {
         </div>
       </main>
 
-      {/* building cards along bottom */}
       <footer className="bg-gray-800 px-6 py-4">
         <BuildingCards />
       </footer>
 
-      {/* popups/animations */}
+      {/* popups */}
       {showFactoryAssignPopup && <FactoryResourceSelection />}
       <ResourcePlacedAnimation />
+      {showCompletePopup && (
+        <GameCompletePopup
+          score={finalScore}
+          onClose={() => setShowCompletePopup(false)}
+        />
+      )}
     </div>
   );
 }

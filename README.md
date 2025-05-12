@@ -28,6 +28,12 @@ Under Service accounts, click Generate new private key and download the JSON.
 Move that file into your project app folder and rename to:
 ./app/serviceAccountKey.json
 
+Also create the file
+./app/.env
+
+And inside that file should be:
+PORT=3000
+
 Now in the firebase console, go to build → authentication → get started
 for sign in methods select google and email/password (keep default options)
 

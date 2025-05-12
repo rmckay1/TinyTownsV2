@@ -10,6 +10,8 @@ import { useGameStore } from './store';
 import { FactoryResourceSelection } from './FactoryOverrideButtons.jsx';
 import { ResourcePlacedAnimation } from './ResourcePlacedAnimation.jsx';
 import { GameCompletePopup } from './GameCompletePopup.jsx';
+import { PlayerProfilePopup } from './PlayerProfilePopup.jsx';
+
 
 export function App() {
   const [user, setUser] = useState(null);
@@ -91,6 +93,8 @@ function GameUI({ user }) {
   const symbolGrid = useMemo(() => translateEmojisToSymbols(grid), [grid]);
   const score = useMemo(() => calculateScore(symbolGrid), [symbolGrid]);
 
+  const [showProfile, setShowProfile] = useState(false);
+
   useEffect(() => {
     resetGrid();
   }, [resetGrid]);
@@ -161,6 +165,13 @@ function GameUI({ user }) {
             Logout
           </button>
         </div>
+
+        <button
+        onClick={() => setShowProfile(true)}
+        className="px-3 py-1 bg-purple-500 rounded hover:bg-blue-600"
+      >
+        Player Profile
+      </button>
       </header>
 
       <main className="flex flex-1 overflow-hidden px-6 py-4">
@@ -190,6 +201,8 @@ function GameUI({ user }) {
           onClose={() => setShowCompletePopup(false)}
         />
       )}
+
+      {showProfile && <PlayerProfilePopup onClose={() => setShowProfile(false)} />}
     </div>
   );
 }

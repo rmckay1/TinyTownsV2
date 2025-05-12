@@ -119,10 +119,13 @@ app.get("/player-data", async (req, res) => {
     const uid = decoded.uid;
 
     const doc = await db.collection("players").doc(uid).get();
-    if (!doc.exists) return res.status(200).send({ achievements: [], highestScore: "0" });
+    if (!doc.exists) {
+      return res.status(200).send({ achievements: [], highestScore: "0" });
+    }
 
     res.status(200).send(doc.data());
   } catch (err) {
+    console.error("Failed to fetch player data:", err);
     res.status(500).send({ error: "Failed to fetch player data" });
   }
 });
@@ -153,7 +156,22 @@ app.post("/leaderboard", async (req, res) => {
   }
 });
 
+app.get("/leaderboard", async (req, res) => {
+  try {
+    const snapshot = await db
+      .collection("leaderboard")
+      .orderBy("score", "desc")
+      .limit(10)
+      .get();
 
+    const leaderboard = snapshot.docs.map(doc => doc.data());
+
+    res.status(200).json(leaderboard);
+  } catch (err) {
+    console.error("Failed to fetch leaderboard:", err);
+    res.status(500).json({ error: "Failed to fetch leaderboard" });
+  }
+});
 
 
 const PORT = process.env.VITE_BACKEND_PORT || 3000;

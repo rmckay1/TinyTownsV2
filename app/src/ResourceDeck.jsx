@@ -14,14 +14,14 @@ export function ResourceDeck() {
     visibleResources: state.visibleResources,
     selectedResourceIndex: state.selectedResourceIndex,
     setSelectedResource: state.setSelectedResource,
-    factoryOverrides: state.factoryOverrides // Make sure to get the factoryOverrides
+    factoryOverrides: state.factoryOverrides // Get the factoryOverrides from state
   }));
 
   return (
     <div className="flex justify-center gap-2 mb-4">
       {visibleResources.map((res, i) => {
         const isSelected = selectedResourceIndex === i;
-        const isFactoryOverride = factoryOverrides.includes(res); // Check if the resource is overridden by a Factory
+        const isFactoryOverride = factoryOverrides.includes(res); // Check if the resource is overridden
 
         return (
           <button
@@ -31,7 +31,7 @@ export function ResourceDeck() {
               w-12 h-12 border-2 rounded transition-all duration-200
               ${RESOURCE_COLORS[res]}
               ${isSelected ? 'ring-4 ring-black scale-105' : 'opacity-90'}
-              ${isFactoryOverride ? 'ring-4 ring-yellow-400' : ''} // Add ring for factory overrides
+              ${isFactoryOverride ? 'ring-4 ring-yellow-400' : ''} // Add a ring if overridden
             `}
           />
         );

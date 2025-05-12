@@ -4,10 +4,10 @@ import {
   chapelRec, tavernRec, theatreRec, wellRec
 } from './recipes';
 
-export const gameStore = create((set, get) => ({
+export const useGameStore = create((set, get) => ({
   grid: Array(16).fill(null),
-  factoryOverrides: [],  // Track overridden resources
-  startedAt: new Date().toISOString(),
+  factoryOverrides: [], // list of strings like ['wood', 'glass']
+  factoryBuildingPlaced: false, // triggers the popup
   selectedResourceIndex: null,
   selectedTiles: [],
   isPlacingBuilding: false,
@@ -15,6 +15,7 @@ export const gameStore = create((set, get) => ({
   resourceDeck: [],
   visibleResources: [],
   bannerAchievements: [],
+  startedAt: new Date().toISOString(),
   availableRecipes: [
     wellRec, theatreRec, factoryRec, cottageRec,
     chapelRec, farmRec, tavernRec, cathedralRec
@@ -36,6 +37,8 @@ export const gameStore = create((set, get) => ({
       isPlacingBuilding: false,
       resourceDeck: shuffled.slice(3),
       visibleResources: shuffled.slice(0, 3),
+      factoryOverrides: [],
+      factoryBuildingPlaced: false,
       startedAt: new Date().toISOString()
     });
   },
@@ -62,15 +65,13 @@ export const gameStore = create((set, get) => ({
       );
 
       if (useOverride) {
-        const newRes = prompt(
-          "Enter the resource you want to use instead (wood, brick, glass, wheat, or stone):"
-        )?.trim().toLowerCase();
-
-        const valid = ['wood', 'brick', 'glass', 'wheat', 'stone'];
-        if (valid.includes(newRes)) {
-          selectedResource = newRes;
+        // Let player choose from remaining 4 resources (not selectedResource)
+        const options = ['wood', 'brick', 'glass', 'wheat', 'stone'].filter(r => r !== selectedResource);
+        let chosen = prompt(`Choose resource instead: ${options.join(', ')}`)?.trim().toLowerCase();
+        if (options.includes(chosen)) {
+          selectedResource = chosen;
         } else {
-          alert("Invalid resource. Using original instead.");
+          alert("Invalid choice. Using original resource.");
         }
       }
     }
@@ -122,7 +123,7 @@ export const gameStore = create((set, get) => ({
   },
 
   confirmBuildingPlacement: (buildIndex) => {
-    const { selectedTiles, grid, activeRecipe, assignFactoryResource } = get();
+    const { selectedTiles, grid, activeRecipe } = get();
 
     const newGrid = [...grid];
     for (const tile of selectedTiles) {
@@ -130,21 +131,9 @@ export const gameStore = create((set, get) => ({
     }
     newGrid[buildIndex] = activeRecipe.icon;
 
-    // Check if the building is a Factory
+    // trigger popup after building Factory
     if (activeRecipe?.name === 'Factory') {
-      setTimeout(() => {
-        const resource = prompt(
-          "Factory built! Choose a resource this Factory will override (wood, brick, glass, wheat, or stone):"
-        )?.trim().toLowerCase();
-
-        const valid = ['wood', 'brick', 'glass', 'wheat', 'stone'];
-        if (valid.includes(resource)) {
-          assignFactoryResource(resource);
-          alert(`Factory will override "${resource}" when it's drawn.`);
-        } else {
-          alert("Invalid resource. No override assigned to this Factory.");
-        }
-      }, 50); // slight delay to let UI update before blocking prompt
+      set({ factoryBuildingPlaced: true });
     }
 
     set({
@@ -155,15 +144,13 @@ export const gameStore = create((set, get) => ({
     });
   },
 
+  assignFactoryResource: (resource) =>
+    set((state) => ({
+      factoryOverrides: [...state.factoryOverrides, resource],
+      factoryBuildingPlaced: false // clear popup trigger
+    })),
+
   setBannerAchievements: (achievements) => {
     set({ bannerAchievements: achievements });
-  },
-
-  assignFactoryResource: (resource) => set((state) => ({
-    factoryOverrides: [...state.factoryOverrides, resource],
-  })),
-
-  clearFactoryOverrides: () => set({ factoryOverrides: [] }),
+  }
 }));
-
-export const useGameStore = (selector) => gameStore(selector);

@@ -35,16 +35,35 @@ export function serializeBoard(grid) {
 // Catherderal done
 export function calculateScore(grid) {
   let score = 0;
+  let emptyCount = 0;
   let cottages = 0;
   let farms = 0;
   let chapels = 0;
   let taverns = 0;
   let hasCathedral = false;
   const N = 4;
-
+  console.log(grid);
   for (let i = 0; i < grid.length; i++) {
     const cell = grid[i];
     switch (cell) {
+      case '.':
+        emptyCount++;
+        break;
+      case 'w':
+        emptyCount++;
+        break;
+      case 'b':
+        emptyCount++;
+        break;
+      case 'h':
+        emptyCount++;
+        break;
+      case 'g':
+        emptyCount++;
+        break;
+      case 's':
+        emptyCount++;
+        break;
       case 'C':
         cottages++;
         break;
@@ -108,12 +127,11 @@ export function calculateScore(grid) {
   else if (taverns === 4) score += 14;
   else if (taverns >= 5)  score += 20;
 
-// Empty‐tile penalty (unless you built a cathedral)
-if (!hasCathedral) {
-  const buildingSymbols = ['C', 'T', 'F', 'W', 'M', 'A', 'P', 'V']; // all valid buildings
-  const emptyOrUnbuiltCount = grid.filter(cell => !buildingSymbols.includes(cell)).length;
-  score -= emptyOrUnbuiltCount;
-}
+  // Empty‐tile penalty (unless you built a cathedral)
+  console.log(hasCathedral);
+  if (!hasCathedral) {
+    score -= emptyCount;
+  }
 
   return score;
 }
@@ -132,7 +150,7 @@ export function translateEmojisToSymbols(grid) {
     '🏭': 'F', // Factory
     '💒': 'P', // Chapel
     '🍺': 'V', // Tavern
-    '⛪': 'M', // Cathedral
+    '🛐': 'M', // Cathedral
     '🌾': 'A', // Farm
   };
   return grid.map(cell => emojiMap[cell] || cell || '.');

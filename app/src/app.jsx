@@ -7,7 +7,7 @@ import PlayerAchievements from './PlayerAchievements';
 import LeaderboardPanel from './LeaderboardPanel';
 import { saveGame, calculateScore, translateEmojisToSymbols } from './logic';
 import { useGameStore } from './store';
-import { FactoryResourceSelection } from './FactoryOverrideButtons';  // Import the new component
+import { FactoryResourceSelection } from './FactoryOverrideButtons.jsx';
 
 export function App() {
   const [user, setUser] = useState(null);
@@ -79,8 +79,10 @@ function GameUI({ user }) {
   const resetGrid = useGameStore(s => s.resetGrid);
   const grid = useGameStore(s => s.grid);
   const startedAt = useGameStore(s => s.startedAt);
-  const factoryBuildingPlaced = useGameStore(s => s.factoryBuildingPlaced);
   const [leaderKey, setLeaderKey] = useState(0);
+  const showFactoryAssignPopup = useGameStore(s => s.showFactoryAssignPopup);
+  console.log("Popup showFactoryAssignPopup:", showFactoryAssignPopup);
+  const pendingFactoryOverride = useGameStore(s => s.pendingFactoryOverride);
 
   // Compute current score
   const symbolGrid = useMemo(() => translateEmojisToSymbols(grid), [grid]);
@@ -171,7 +173,7 @@ function GameUI({ user }) {
       </footer>
 
       {/* Show Factory resource selection popup if needed */}
-      {factoryBuildingPlaced && <FactoryResourceSelection />}
+      {showFactoryAssignPopup && <FactoryResourceSelection />}
     </div>
   );
 }

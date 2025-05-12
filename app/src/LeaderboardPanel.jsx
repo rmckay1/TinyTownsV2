@@ -3,20 +3,15 @@ import React, { useEffect, useState } from 'react';
 
 export default function LeaderboardPanel({ refreshTrigger }) {
   const [leaders, setLeaders] = useState([]);
-  console.log("leaders is " + leaders);
-  console.log("setLeaders is " + setLeaders);
 
 useEffect(() => {
   const fetchLeaders = async () => {
     try {
       const res = await fetch("http://localhost:3000/leaderboard");
-      console.log("Response status:", res.status);
-      console.log("Response headers:", res.headers);
-      
+    
       // If the response is OK, parse the JSON
       if (res.ok) {
         const data = await res.json();
-        console.log("Leaderboard data:", data);
         setLeaders(data);
       } else {
         console.error("Error fetching leaderboard:", res.status, res.statusText);

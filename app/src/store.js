@@ -6,10 +6,12 @@ import {
 
 export const useGameStore = create((set, get) => ({
   grid: Array(16).fill(null),
-  factoryOverrides: [], // list of strings like ['wood', 'glass']
-  factoryBuildingPlaced: false, // triggers the popup
+  factoryOverrides: [], // stored resource types that trigger substitution
+  factoryBuildingPlaced: false, // triggers the popup for assigning override
+  pendingOverrideResource: null, // used for substitution prompt
   selectedResourceIndex: null,
   selectedTiles: [],
+  showFactoryAssignPopup: false,
   isPlacingBuilding: false,
   activeRecipe: null,
   resourceDeck: [],
@@ -23,7 +25,7 @@ export const useGameStore = create((set, get) => ({
 
   resetGrid: () => {
     const resources = ['wood', 'brick', 'wheat', 'glass', 'stone'];
-    const fullDeck = resources.flatMap(res => Array(15).fill(res));
+    const fullDeck = resources.flatMap(res => Array(3).fill(res));
     const shuffled = fullDeck
       .map(r => ({ val: r, sort: Math.random() }))
       .sort((a, b) => a.sort - b.sort)
@@ -38,58 +40,102 @@ export const useGameStore = create((set, get) => ({
       resourceDeck: shuffled.slice(3),
       visibleResources: shuffled.slice(0, 3),
       factoryOverrides: [],
-      factoryBuildingPlaced: false,
+      showFactoryAssignPopup: false,
+      pendingFactoryOverride: null, // holds the selectedResource if override is available
+      pendingOverrideResource: null,
       startedAt: new Date().toISOString()
     });
   },
 
   setSelectedResource: (index) => set({ selectedResourceIndex: index }),
 
-  placeResource: (index) => {
-    const {
-      grid,
-      selectedResourceIndex,
-      visibleResources,
-      resourceDeck,
-      factoryOverrides
-    } = get();
+placeResource: (index) => {
+  const {
+    grid,
+    selectedResourceIndex,
+    visibleResources,
+    resourceDeck,
+    factoryOverrides,
+    pendingFactoryOverride // add pendingOverride check
+  } = get();
 
-    if (grid[index] || selectedResourceIndex === null) return;
+  if (grid[index] || selectedResourceIndex === null) return;
 
-    let selectedResource = visibleResources[selectedResourceIndex];
+  const selectedResource = visibleResources[selectedResourceIndex];
 
-    // Factory override logic
-    if (factoryOverrides.includes(selectedResource)) {
-      const useOverride = confirm(
-        `You drew "${selectedResource}", which matches a Factory override. Do you want to use your Factory to choose a different resource?`
-      );
+  // If there's a pending factory override, handle the substitution
+  if (factoryOverrides.includes(selectedResource) && !pendingFactoryOverride) {
+    set({ pendingFactoryOverride: selectedResource });
+    return;
+  }
 
-      if (useOverride) {
-        // Let player choose from remaining 4 resources (not selectedResource)
-        const options = ['wood', 'brick', 'glass', 'wheat', 'stone'].filter(r => r !== selectedResource);
-        let chosen = prompt(`Choose resource instead: ${options.join(', ')}`)?.trim().toLowerCase();
-        if (options.includes(chosen)) {
-          selectedResource = chosen;
-        } else {
-          alert("Invalid choice. Using original resource.");
-        }
-      }
-    }
+  // If there's a pending override, finalize the resource placement with the override
+  if (pendingFactoryOverride) {
+    get().resolveFactoryOverride(selectedResource);  // Resolve the override
+    return; // We don't need to reset the index here yet, the resolve will handle it
+  }
 
-    const newGrid = [...grid];
-    newGrid[index] = selectedResource;
+  // Otherwise, place the resource normally
+  get().finalizeResourcePlacement(selectedResource, index);
+},
 
-    const newVisible = [...visibleResources];
-    newVisible[selectedResourceIndex] = resourceDeck[0];
-    const newDeck = [...resourceDeck.slice(1), selectedResource];
 
-    set({
-      grid: newGrid,
-      selectedResourceIndex: null,
-      visibleResources: newVisible,
-      resourceDeck: newDeck
-    });
-  },
+
+finalizeResourcePlacement: (resource, index) => {
+  const {
+    grid,
+    selectedResourceIndex,
+    visibleResources,
+    resourceDeck
+  } = get();
+
+  const newGrid = [...grid];
+  newGrid[index] = resource;
+
+  const newVisible = [...visibleResources];
+  newVisible[selectedResourceIndex] = resourceDeck[0];
+  const newDeck = [...resourceDeck.slice(1), resource];
+
+  set({
+    grid: newGrid,
+    selectedResourceIndex: null,  // Clear the selected resource index
+    visibleResources: newVisible,
+    resourceDeck: newDeck,
+    pendingFactoryOverride: null // Clear override mode
+  });
+},
+
+
+resolveFactoryOverride: (overrideResource) => {
+  const {
+    grid,
+    selectedResourceIndex,
+    visibleResources,
+    resourceDeck,
+    pendingFactoryOverride
+  } = get();
+
+  if (!pendingFactoryOverride || selectedResourceIndex === null) return;
+
+  const selectedResource = overrideResource;
+
+  const newGrid = [...grid];
+  newGrid[selectedResourceIndex] = selectedResource;
+
+  const newVisible = [...visibleResources];
+  newVisible[selectedResourceIndex] = resourceDeck[0];
+  const newDeck = [...resourceDeck.slice(1), pendingFactoryOverride];
+
+  set({
+    grid: newGrid,
+    selectedResourceIndex: null,  // Clear the selected resource index
+    visibleResources: newVisible,
+    resourceDeck: newDeck,
+    pendingFactoryOverride: null // Clear the pending override
+  });
+},
+
+
 
   toggleTileSelection: (index) => {
     const state = get();
@@ -122,35 +168,74 @@ export const useGameStore = create((set, get) => ({
     set({ isPlacingBuilding: true });
   },
 
-  confirmBuildingPlacement: (buildIndex) => {
-    const { selectedTiles, grid, activeRecipe } = get();
+confirmBuildingPlacement: (buildIndex) => {
+  const { selectedTiles, grid, activeRecipe } = get();
 
-    const newGrid = [...grid];
-    for (const tile of selectedTiles) {
-      newGrid[tile.index] = null;
+  const newGrid = [...grid];
+  for (const tile of selectedTiles) {
+    newGrid[tile.index] = null;
+  }
+  newGrid[buildIndex] = activeRecipe.icon;
+
+  // trigger popup after building Factory
+  if (activeRecipe?.name === 'Factory') {
+    console.log("✅ Factory built! Showing popup.");
+  set({ factoryBuildingPlaced: true, showFactoryAssignPopup: true });
+  }
+
+  set({
+    grid: newGrid,
+    selectedTiles: [],
+    activeRecipe: null,
+    isPlacingBuilding: false
+  });
+},
+
+assignFactoryResource: (resource) =>
+  set((state) => ({
+    factoryOverrides: [...state.factoryOverrides, resource],
+    showFactoryAssignPopup: false, // Hide popup once resource is assigned
+    factoryBuildingPlaced: false, // Reset the factory placement flag
+  })),
+
+  confirmOverrideSubstitution: (newResource) => {
+    const index = get().selectedResourceIndex;
+    if (index !== null) {
+      get().finalizeResourcePlacement(newResource, index);
     }
-    newGrid[buildIndex] = activeRecipe.icon;
-
-    // trigger popup after building Factory
-    if (activeRecipe?.name === 'Factory') {
-      set({ factoryBuildingPlaced: true });
-    }
-
-    set({
-      grid: newGrid,
-      selectedTiles: [],
-      activeRecipe: null,
-      isPlacingBuilding: false
-    });
   },
-
-  assignFactoryResource: (resource) =>
-    set((state) => ({
-      factoryOverrides: [...state.factoryOverrides, resource],
-      factoryBuildingPlaced: false // clear popup trigger
-    })),
 
   setBannerAchievements: (achievements) => {
     set({ bannerAchievements: achievements });
-  }
+  },
+
+  resolveFactoryOverride: (overrideResource) => {
+  const {
+    grid,
+    selectedResourceIndex,
+    visibleResources,
+    resourceDeck,
+    pendingFactoryOverride
+  } = get();
+
+  if (!pendingFactoryOverride || selectedResourceIndex === null) return;
+
+  const selectedResource = overrideResource;
+
+  const newGrid = [...grid];
+  newGrid[selectedResourceIndex] = selectedResource;
+
+  const newVisible = [...visibleResources];
+  newVisible[selectedResourceIndex] = resourceDeck[0];
+  const newDeck = [...resourceDeck.slice(1), pendingFactoryOverride];
+
+  set({
+    grid: newGrid,
+    selectedResourceIndex: null,
+    visibleResources: newVisible,
+    resourceDeck: newDeck,
+    pendingFactoryOverride: null
+  });
+}
+
 }));

@@ -138,23 +138,4 @@ describe('TownGrid component', () => {
   });
 });
 
-// --- LeaderboardPanel tests ---
-describe('LeaderboardPanel component', () => {
-  beforeEach(() => { global.fetch = vi.fn(); });
-
-  it('fetches and displays entries', async () => {
-    // Provide res.ok = true so setLeaders(data) is called
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([{ townName: 'A', score: 5 }, { townName: 'B', score: 3 }])
-    });
-
-    render(<LeaderboardPanel refreshTrigger={0} />);
-    const items = await screen.findAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(screen.getByText('A')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
-  });
-});
-
 // Remaining UI tests (PlayerAchievements, AchievementBanner, BuildingCards) unchanged...

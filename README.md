@@ -19,7 +19,6 @@ This guide will walk you through cloning the TinyTownsV2 repo, installing Docker
 
 ```bash
 git clone https://github.com/rmckay1/TinyTownsV2.git
-cd TinyTownsV2
 ```
 ## 2. Generate Firebase credentials
 Go to https://console.firebase.google.com/ → your project (make new one if needed) → Project settings (gear icon).
@@ -27,7 +26,7 @@ Go to https://console.firebase.google.com/ → your project (make new one if nee
 Under Service accounts, click Generate new private key and download the JSON.
 
 Move that file into your project app folder and rename to:
-./app/firebase-service-account.json
+./app/serviceAccountKey.json
 
 Now in the firebase console, go to build → authentication → get started
 for sign in methods select google and email/password (keep default options)

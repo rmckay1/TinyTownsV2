@@ -138,8 +138,8 @@ export function translateEmojisToSymbols(grid) {
   return grid.map(cell => emojiMap[cell] || cell || '.');
 }
 
-// Network calls for saving game & achievements
 export async function saveGame(board, score, startTime, endTime, idToken) {
+  // Save the game first
   const res = await fetch("http://localhost:3000/save-game", {
     method: "POST",
     headers: {
@@ -148,8 +148,21 @@ export async function saveGame(board, score, startTime, endTime, idToken) {
     },
     body: JSON.stringify({ board, score: String(score), startTime, endTime }),
   });
-  return res.json();
+
+  const savedData = await res.json();
+
+  // After saving, check for unlocked achievements
+  const unlockedAchievements = await checkAndUnlockAchievements(
+    board, score, startTime, endTime, idToken
+  );
+  
+  // Optionally, you can log the unlocked achievements
+  console.log("Unlocked Achievements:", unlockedAchievements);
+
+  // You can now return both saved data and unlocked achievements if needed
+  return { savedData, unlockedAchievements };
 }
+
 
 export async function unlockAchievement(achievementId, idToken) {
   const res = await fetch("http://localhost:3000/unlock-achievement", {
@@ -180,27 +193,36 @@ export async function updateHighestScore(score, idToken) {
 
 // Core achievement logic: dynamically import self so Vitest spies are honored
 export async function checkAndUnlockAchievements(
-  grid,
+  grid,  // assuming grid is a string
   score,
   startedAt,
   finishedAt,
   idToken
 ) {
-  const nonEmpty   = grid.filter(x => x != null && x !== '.').length;
+  // Convert string grid to an array of characters
+  const gridArray = grid.split('');  // Split the string into an array of cells
+  
+  console.log("Grid Array:", gridArray);  // Log to ensure it’s the correct array
+
+  // Check if gridArray is an array before filtering
+  if (!Array.isArray(gridArray)) {
+    console.error("Expected grid to be an array, but got:", typeof gridArray);
+    return [];  // Return an empty array if grid is not an array
+  }
+
+  const nonEmpty = gridArray.filter(x => x != null && x !== '.').length;
   const elapsedSec = (new Date(finishedAt) - new Date(startedAt)) / 1000;
-  const types      = new Set(grid.filter(x => /^[A-Z]$/.test(x)));
+  const types = new Set(gridArray.filter(x => /^[A-Z]$/.test(x)));
 
   // Decide which achievements to try
   const toTry = [];
-  if (nonEmpty === grid.length)           toTry.push('perfectTown');
-  if (score >= 50)                         toTry.push('masterBuilder');
-  if (types.size >= 3)                     toTry.push('varietyPack');
-  if (elapsedSec < 180 && nonEmpty > 0)    toTry.push('speedy');
-  if (grid.filter(x => x === 'A').length >= 3) toTry.push('farmLife');
+  if (nonEmpty === gridArray.length)           toTry.push('perfectTown');
+  if (score >= 50)                             toTry.push('masterBuilder');
+  if (types.size >= 3)                         toTry.push('varietyPack');
+  if (elapsedSec < 180 && nonEmpty > 0)       toTry.push('speedy');
+  if (gridArray.filter(x => x === 'A').length >= 3) toTry.push('farmLife');
 
   const unlocked = [];
-  // dynamic import of ourselves – this is the key so that
-  // `vi.spyOn(logic, 'unlockAchievement')` from your tests will actually be called
   const logic = await import('./logic.js');
   for (const id of toTry) {
     const got = await logic.unlockAchievement(id, idToken);

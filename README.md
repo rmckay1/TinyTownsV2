@@ -62,4 +62,3 @@ docker compose up
 ## 4. Play the game
 In a browser, go to http://localhost:5173/ and log in to acess Tiny Towns
 
-

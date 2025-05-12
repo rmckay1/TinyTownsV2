@@ -6,6 +6,7 @@ import {
 
 export const gameStore = create((set, get) => ({
   grid: Array(16).fill(null),
+  factoryOverrides: [],  // Track overridden resources
   startedAt: new Date().toISOString(),
   selectedResourceIndex: null,
   selectedTiles: [],
@@ -42,10 +43,38 @@ export const gameStore = create((set, get) => ({
   setSelectedResource: (index) => set({ selectedResourceIndex: index }),
 
   placeResource: (index) => {
-    const { grid, selectedResourceIndex, visibleResources, resourceDeck } = get();
+    const {
+      grid,
+      selectedResourceIndex,
+      visibleResources,
+      resourceDeck,
+      factoryOverrides
+    } = get();
+
     if (grid[index] || selectedResourceIndex === null) return;
 
-    const selectedResource = visibleResources[selectedResourceIndex];
+    let selectedResource = visibleResources[selectedResourceIndex];
+
+    // Factory override logic
+    if (factoryOverrides.includes(selectedResource)) {
+      const useOverride = confirm(
+        `You drew "${selectedResource}", which matches a Factory override. Do you want to use your Factory to choose a different resource?`
+      );
+
+      if (useOverride) {
+        const newRes = prompt(
+          "Enter the resource you want to use instead (wood, brick, glass, wheat, or stone):"
+        )?.trim().toLowerCase();
+
+        const valid = ['wood', 'brick', 'glass', 'wheat', 'stone'];
+        if (valid.includes(newRes)) {
+          selectedResource = newRes;
+        } else {
+          alert("Invalid resource. Using original instead.");
+        }
+      }
+    }
+
     const newGrid = [...grid];
     newGrid[index] = selectedResource;
 
@@ -87,20 +116,36 @@ export const gameStore = create((set, get) => ({
 
   placeBuilding: () => {
     const { activeRecipe, selectedTiles, grid } = get();
-    // Only allow Cathedral once per game
     if (activeRecipe?.name === 'Cathedral' && grid.includes(activeRecipe.icon)) return;
     if (!activeRecipe || selectedTiles.length === 0) return;
     set({ isPlacingBuilding: true });
   },
 
   confirmBuildingPlacement: (buildIndex) => {
-    const { selectedTiles, grid, activeRecipe } = get();
+    const { selectedTiles, grid, activeRecipe, assignFactoryResource } = get();
 
     const newGrid = [...grid];
     for (const tile of selectedTiles) {
       newGrid[tile.index] = null;
     }
     newGrid[buildIndex] = activeRecipe.icon;
+
+    // Check if the building is a Factory
+    if (activeRecipe?.name === 'Factory') {
+      setTimeout(() => {
+        const resource = prompt(
+          "Factory built! Choose a resource this Factory will override (wood, brick, glass, wheat, or stone):"
+        )?.trim().toLowerCase();
+
+        const valid = ['wood', 'brick', 'glass', 'wheat', 'stone'];
+        if (valid.includes(resource)) {
+          assignFactoryResource(resource);
+          alert(`Factory will override "${resource}" when it's drawn.`);
+        } else {
+          alert("Invalid resource. No override assigned to this Factory.");
+        }
+      }, 50); // slight delay to let UI update before blocking prompt
+    }
 
     set({
       grid: newGrid,
@@ -112,7 +157,13 @@ export const gameStore = create((set, get) => ({
 
   setBannerAchievements: (achievements) => {
     set({ bannerAchievements: achievements });
-  }
+  },
+
+  assignFactoryResource: (resource) => set((state) => ({
+    factoryOverrides: [...state.factoryOverrides, resource],
+  })),
+
+  clearFactoryOverrides: () => set({ factoryOverrides: [] }),
 }));
 
 export const useGameStore = (selector) => gameStore(selector);
